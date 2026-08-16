@@ -1,0 +1,748 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cricket Scoreboard — Preview v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#0a1410; --surface:#122019; --surface-raised:#17281f; --surface-pressed:#0e1a14;
+    --line:#24382d; --text:#eaf2ec; --text-muted:#86a190; --text-dim:#526258;
+    --score-amber:#ffb627; --accent-green:#34d399; --wicket-red:#f0533d; --extra-amber:#f5a623; --deadball:#64766c;
+    --font-display:'Rajdhani','Space Grotesk',sans-serif; --font-body:'Space Grotesk',system-ui,sans-serif;
+    --radius-sm:8px; --radius-md:14px; --radius-lg:20px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:#05100c;color:var(--text);font-family:var(--font-body);}
+  body{min-height:100vh;display:flex;justify-content:center;padding:24px 12px;}
+  button{font-family:inherit;color:inherit;border:none;background:none;cursor:pointer;}
+  button:focus-visible,input:focus-visible{outline:3px solid var(--accent-green);outline-offset:2px;}
+  h1,h2,p{margin:0;}
+  .app-shell{width:100%;max-width:400px;display:flex;flex-direction:column;background:var(--bg);
+    border-radius:var(--radius-lg);border:1px solid var(--line);box-shadow:0 30px 80px -20px rgba(0,0,0,.6);overflow:hidden;position:relative;}
+
+  .setup-screen{flex:1;display:flex;flex-direction:column;justify-content:center;padding:32px 24px 40px;}
+  .setup-header{text-align:center;margin-bottom:32px;}
+  .setup-emoji{font-size:40px;display:block;margin-bottom:8px;}
+  .setup-title{font-family:var(--font-display);font-weight:700;font-size:28px;letter-spacing:.02em;}
+  .setup-subtitle{margin-top:6px;color:var(--text-muted);font-size:15px;}
+  .setup-form{display:flex;flex-direction:column;gap:16px;}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .field{display:flex;flex-direction:column;gap:8px;}
+  .field-label{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-muted);}
+  .field input{background:var(--surface);border:1.5px solid var(--line);border-radius:var(--radius-md);
+    padding:14px 16px;font-size:17px;font-weight:600;color:var(--text);width:100%;}
+  .field input:focus{border-color:var(--accent-green);}
+  .start-button{margin-top:10px;background:var(--accent-green);color:#06241a;font-family:var(--font-display);
+    font-weight:700;font-size:19px;letter-spacing:.03em;padding:16px;border-radius:var(--radius-md);min-height:54px;}
+  .start-button:active{transform:scale(.98);}
+
+  .app-header{position:relative;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);}
+  .app-header-title{font-family:var(--font-display);font-weight:700;font-size:14px;letter-spacing:.03em;color:var(--text-muted);}
+  .app-menu-button{min-width:36px;min-height:36px;border-radius:var(--radius-sm);font-size:18px;color:var(--text-muted);
+    display:flex;align-items:center;justify-content:center;}
+  .app-menu-button:active{background:var(--surface-raised);}
+  .app-menu{position:absolute;top:48px;right:10px;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--radius-md);padding:6px;box-shadow:0 12px 28px rgba(0,0,0,.4);z-index:10;}
+  .app-menu-item{display:block;width:100%;text-align:left;padding:9px 12px;border-radius:var(--radius-sm);
+    font-weight:600;font-size:13px;white-space:nowrap;color:var(--wicket-red);}
+  .app-menu-item:active{background:var(--surface-raised);}
+
+  .scoreboard{background:var(--surface);border-bottom:1px solid var(--line);padding:18px 20px 20px;text-align:center;}
+  .scoreboard-team{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-green);margin-bottom:6px;}
+  .scoreboard-score{font-family:var(--font-display);font-weight:700;font-size:58px;line-height:1;color:var(--score-amber);
+    letter-spacing:.01em;font-variant-numeric:tabular-nums;}
+  .scoreboard-slash{color:var(--text-dim);margin:0 3px;font-weight:500;}
+  .scoreboard-overs{margin-top:4px;font-size:16px;font-weight:600;color:var(--text-muted);font-variant-numeric:tabular-nums;}
+  .scoreboard-target{margin-top:9px;display:inline-flex;align-items:center;gap:8px;background:var(--surface-raised);
+    border:1px solid var(--line);border-radius:999px;padding:5px 13px;font-size:12px;font-weight:600;color:var(--text);}
+  .scoreboard-target-dot{color:var(--text-dim);}
+
+  .run-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;padding:14px 14px 0;}
+  .run-button{aspect-ratio:1.5/1;border-radius:var(--radius-md);background:var(--surface-raised);border:1px solid var(--line);
+    font-family:var(--font-display);font-weight:700;font-size:30px;color:var(--text);display:flex;align-items:center;justify-content:center;}
+  .run-button:active{transform:scale(.95);background:var(--surface-pressed);}
+  .run-button:disabled{opacity:.35;}
+  .run-4{color:var(--accent-green);border-color:rgba(52,211,153,.35);}
+  .run-6{color:var(--score-amber);border-color:rgba(255,182,39,.35);}
+
+  .event-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:10px 14px 0;}
+  .event-button{min-height:48px;border-radius:var(--radius-md);border:1px solid var(--line);font-weight:700;font-size:14px;letter-spacing:.04em;}
+  .event-button:active{transform:scale(.96);}
+  .event-button:disabled{opacity:.35;}
+  .event-wicket{background:rgba(240,83,61,.14);color:var(--wicket-red);border-color:rgba(240,83,61,.4);}
+  .event-wide,.event-noball{background:rgba(245,166,35,.12);color:var(--extra-amber);border-color:rgba(245,166,35,.35);}
+  .event-deadball{background:var(--surface-raised);color:var(--text-muted);}
+
+  .secondary-row{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:10px 14px 0;}
+  .undo-button,.custom-button{min-height:44px;border-radius:var(--radius-md);border:1.5px solid var(--line);
+    background:transparent;color:var(--text);font-weight:600;font-size:13px;}
+  .undo-button:active,.custom-button:active{transform:scale(.97);}
+  .undo-button:disabled{opacity:.3;color:var(--text-muted);}
+  .custom-button{color:var(--accent-green);border-color:rgba(52,211,153,.35);}
+
+  .history{margin-top:16px;padding:0 14px 20px;}
+  .history-title-row{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;}
+  .history-title{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);}
+  .history-hint{font-size:11px;color:var(--text-dim);}
+  .history-empty{color:var(--text-dim);font-size:13px;}
+  .history-overs{display:flex;flex-direction:column-reverse;gap:10px;max-height:200px;overflow-y:auto;}
+  .history-over{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .history-over-label{font-size:11px;font-weight:700;color:var(--text-dim);min-width:48px;}
+  .history-chips{display:flex;gap:5px;flex-wrap:wrap;}
+  .chip{min-width:26px;height:26px;padding:0 7px;border-radius:999px;background:var(--surface-raised);border:1px solid var(--line);
+    display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text-muted);
+    user-select:none;-webkit-user-select:none;touch-action:manipulation;}
+  .chip:active{transform:scale(.92);}
+  .chip-boundary{color:var(--accent-green);border-color:rgba(52,211,153,.35);}
+  .chip-wicket{color:var(--wicket-red);border-color:rgba(240,83,61,.4);background:rgba(240,83,61,.1);}
+  .chip-extra{color:var(--extra-amber);border-color:rgba(245,166,35,.35);}
+  .chip-dead{color:var(--text-dim);}
+
+  .innings-summary,.result-screen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px 24px 40px;}
+  .innings-summary-eyebrow{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-green);margin-bottom:12px;}
+  .innings-summary-team{font-family:var(--font-display);font-weight:700;font-size:22px;}
+  .innings-summary-score{font-family:var(--font-display);font-weight:700;font-size:56px;color:var(--score-amber);margin-top:4px;font-variant-numeric:tabular-nums;}
+  .innings-summary-overs{margin-top:4px;color:var(--text-muted);font-weight:600;}
+  .innings-summary-button,.result-new-match{margin-top:32px;width:100%;max-width:280px;min-height:52px;background:var(--accent-green);
+    color:#06241a;font-family:var(--font-display);font-weight:700;font-size:17px;border-radius:var(--radius-md);}
+  .innings-summary-button:active,.result-new-match:active{transform:scale(.98);}
+
+  .result-headline{font-family:var(--font-display);font-weight:700;font-size:25px;color:var(--score-amber);}
+  .result-subline{margin-top:8px;color:var(--text-muted);font-weight:600;}
+  .result-card{margin-top:24px;width:100%;max-width:300px;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--radius-md);padding:16px 18px;display:flex;flex-direction:column;gap:10px;}
+  .result-row{display:flex;align-items:baseline;justify-content:space-between;}
+  .result-team{font-weight:600;color:var(--text-muted);font-size:14px;}
+  .result-score{font-family:var(--font-display);font-weight:700;font-size:18px;font-variant-numeric:tabular-nums;}
+  .result-overs{font-size:12px;font-weight:500;color:var(--text-dim);}
+
+  .confirm-overlay,.composer-overlay{position:fixed;inset:0;background:rgba(6,12,9,.72);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50;}
+  .confirm-card{width:100%;max-width:300px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:22px;text-align:center;}
+  .confirm-text{font-weight:600;font-size:15px;line-height:1.4;}
+  .confirm-actions{margin-top:20px;display:flex;gap:10px;}
+  .confirm-actions button{flex:1;min-height:46px;border-radius:var(--radius-md);font-weight:700;font-size:14px;}
+  .confirm-cancel{background:var(--surface-raised);color:var(--text);}
+  .confirm-confirm{background:var(--wicket-red);color:#2a0a06;}
+
+  .composer-card{width:100%;max-width:340px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);
+    padding:20px;max-height:88vh;overflow-y:auto;}
+  .composer-title{font-family:var(--font-display);font-weight:700;font-size:18px;margin-bottom:2px;}
+  .composer-sub{font-size:12px;color:var(--text-dim);margin-bottom:16px;}
+  .composer-section-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .segmented{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:18px;}
+  .segmented button{padding:10px 4px;border-radius:var(--radius-sm);border:1.5px solid var(--line);background:var(--surface-raised);
+    font-size:12px;font-weight:700;color:var(--text-muted);}
+  .segmented button.active{border-color:var(--accent-green);color:var(--accent-green);background:rgba(52,211,153,.12);}
+  .segmented button:disabled{opacity:.35;}
+
+  .stepper-row{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:6px;}
+  .stepper-btn{width:44px;height:44px;border-radius:50%;background:var(--surface-raised);border:1.5px solid var(--line);
+    font-size:20px;font-weight:700;color:var(--text);display:flex;align-items:center;justify-content:center;}
+  .stepper-btn:active{transform:scale(.92);}
+  .stepper-btn:disabled{opacity:.3;}
+  .stepper-value{font-family:var(--font-display);font-weight:700;font-size:36px;min-width:56px;text-align:center;color:var(--score-amber);}
+  .quick-runs{display:flex;gap:6px;justify-content:center;margin-bottom:18px;flex-wrap:wrap;}
+  .quick-runs button{width:36px;height:36px;border-radius:50%;background:var(--surface-raised);border:1px solid var(--line);
+    font-size:13px;font-weight:700;color:var(--text-muted);}
+  .quick-runs button.active{background:rgba(255,182,39,.15);border-color:var(--score-amber);color:var(--score-amber);}
+  .quick-runs button:disabled{opacity:.3;}
+
+  .wicket-toggle-row{display:flex;align-items:center;justify-content:space-between;background:var(--surface-raised);
+    border:1px solid var(--line);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:18px;}
+  .wicket-toggle-row.on{border-color:rgba(240,83,61,.5);background:rgba(240,83,61,.1);}
+  .wicket-toggle-label{font-weight:600;font-size:14px;}
+  .toggle-switch{width:46px;height:26px;border-radius:999px;background:var(--line);position:relative;flex-shrink:0;}
+  .toggle-switch.on{background:var(--wicket-red);}
+  .toggle-switch::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--text);
+    transition:transform .12s ease;}
+  .toggle-switch.on::after{transform:translateX(20px);background:#fff;}
+
+  .composer-preview{background:var(--surface-pressed);border:1px solid var(--line);border-radius:var(--radius-md);
+    padding:12px 14px;margin-bottom:18px;font-size:13px;line-height:1.7;color:var(--text-muted);}
+  .composer-preview b{color:var(--text);font-family:var(--font-display);font-weight:700;font-size:15px;}
+  .composer-note{font-size:11px;color:var(--extra-amber);margin:-10px 0 16px;}
+
+  .composer-actions{display:flex;gap:8px;}
+  .composer-actions button{flex:1;min-height:48px;border-radius:var(--radius-md);font-weight:700;font-size:14px;}
+  .composer-cancel{background:var(--surface-raised);color:var(--text);}
+  .composer-save{background:var(--accent-green);color:#06241a;}
+  .composer-delete{background:transparent;color:var(--wicket-red);border:1.5px solid rgba(240,83,61,.4);
+    width:100%;min-height:42px;border-radius:var(--radius-md);font-weight:700;font-size:13px;margin-top:10px;}
+
+  .preview-note{max-width:400px;margin:0 auto 14px;text-align:center;font-size:12px;color:#6b8177;padding:0 8px;}
+</style>
+</head>
+<body>
+<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
+  <div class="preview-note">Live preview — same engine as the real project, plus edge-case ball editing. Tap and hold (or double-click) any chip in Ball History to edit it. Refreshing resets the match.</div>
+  <div id="root" class="app-shell"></div>
+</div>
+
+<script>
+// ---- Models ----
+const MIN_PLAYERS = 2, MAX_PLAYERS = 30, MIN_OVERS = 1, MAX_OVERS = 200;
+const DEFAULT_PLAYERS = 11, DEFAULT_OVERS = 10;
+
+function maxWickets(players){ return Math.max(0, players - 1); }
+function maxLegalBalls(overs){ return overs * 6; }
+function oversDisplay(legalBalls){
+  const overs = Math.floor(legalBalls / 6);
+  const balls = legalBalls % 6;
+  return overs + '.' + balls;
+}
+function clamp(v, min, max){ if(Number.isNaN(v)) return min; return Math.min(max, Math.max(min, v)); }
+function validateSetup(input){
+  const rawPlayers = Number.isFinite(input.players) ? Math.round(input.players) : DEFAULT_PLAYERS;
+  const rawOvers = Number.isFinite(input.overs) ? Math.round(input.overs) : DEFAULT_OVERS;
+  return {
+    players: clamp(rawPlayers, MIN_PLAYERS, MAX_PLAYERS),
+    overs: clamp(rawOvers, MIN_OVERS, MAX_OVERS),
+    teamA: (input.teamA || '').trim() || 'Team A',
+    teamB: (input.teamB || '').trim() || 'Team B',
+  };
+}
+function createInnings(){ return { runs:0, wickets:0, legalBalls:0, events:[] }; }
+function createMatch(setup){
+  return { setup, innings1: createInnings(), innings2: createInnings(), status: 'innings1', winner: undefined, resultText: undefined };
+}
+
+// ---- Ball model ----
+// Every ball is now: { delivery: 'NORMAL'|'WIDE'|'NO_BALL'|'DEAD_BALL', batRuns: number, wicket: boolean }
+// This composes freely: a no-ball with 6 batting runs, a wide with a stumping, a run-out on the 3rd
+// run of a no-ball (batRuns:2, delivery:NO_BALL, wicket:true -> 1 extra + 2 run + wicket), overthrows
+// folded into batRuns, etc. Deliveries and outcomes are independent instead of fixed presets.
+const DELIVERY_LABEL = { NORMAL:'Normal', WIDE:'Wide', NO_BALL:'No Ball', DEAD_BALL:'Dead Ball' };
+
+function extraRuns(delivery){ return (delivery === 'WIDE' || delivery === 'NO_BALL') ? 1 : 0; }
+function isLegalDelivery(delivery){ return delivery === 'NORMAL'; }
+function ballTotalRuns(ball){ return ball.batRuns + extraRuns(ball.delivery); }
+
+function ballChipLabel(ball){
+  const parts = [];
+  if(ball.delivery === 'WIDE') parts.push('WD');
+  if(ball.delivery === 'NO_BALL') parts.push('NB');
+  if(ball.delivery === 'DEAD_BALL') parts.push('DB');
+  if(ball.batRuns > 0) parts.push(String(ball.batRuns));
+  if(ball.wicket) parts.push('W');
+  if(parts.length === 0) parts.push('0');
+  return parts.join('+');
+}
+function ballChipClass(ball){
+  if(ball.wicket) return 'chip chip-wicket';
+  if(ball.delivery === 'WIDE' || ball.delivery === 'NO_BALL') return 'chip chip-extra';
+  if(ball.delivery === 'DEAD_BALL') return 'chip chip-dead';
+  if(ball.batRuns === 4 || ball.batRuns === 6) return 'chip chip-boundary';
+  return 'chip';
+}
+
+// ---- Scoring engine ----
+function isInningsOver(innings, players, overs){
+  return innings.legalBalls >= maxLegalBalls(overs) || innings.wickets >= maxWickets(players);
+}
+function canRecordEvent(match){
+  if(match.status === 'innings1') return !isInningsOver(match.innings1, match.setup.players, match.setup.overs);
+  if(match.status === 'innings2') return !isInningsOver(match.innings2, match.setup.players, match.setup.overs);
+  return false;
+}
+function computeResult(teamARuns, innings2, players){
+  const teamBRuns = innings2.runs;
+  if(teamBRuns > teamARuns){
+    const wr = maxWickets(players) - innings2.wickets;
+    return { winner:'B', text:'Team B won by ' + wr + ' wicket' + (wr===1?'':'s') + '.' };
+  }
+  if(teamBRuns < teamARuns){
+    const margin = teamARuns - teamBRuns;
+    return { winner:'A', text:'Team A won by ' + margin + ' run' + (margin===1?'':'s') + '.' };
+  }
+  return { winner:'TIE', text:'Match Tied' };
+}
+
+// Recomputes an innings' totals from its events list — the single source of
+// truth is always the event list, so editing any past ball just means
+// re-summing rather than reverse-engineering a delta.
+function recomputeInnings(events){
+  let runs = 0, wickets = 0, legalBalls = 0;
+  for(const ball of events){
+    runs += ballTotalRuns(ball);
+    if(ball.wicket) wickets++;
+    if(isLegalDelivery(ball.delivery)) legalBalls++;
+  }
+  return { runs, wickets, legalBalls, events };
+}
+
+// Re-checks innings/match completion after any change (new ball or an edit
+// to a past one) — same rule as applyEvent, just callable standalone.
+function reevaluateStatus(match){
+  let next = { ...match };
+  if(next.status === 'innings1'){
+    if(isInningsOver(next.innings1, next.setup.players, next.setup.overs)){
+      next.status = 'innings1-complete';
+    }
+  } else if(next.status === 'innings2'){
+    const chaseTarget = next.innings1.runs + 1;
+    const reachedTarget = next.innings2.runs >= chaseTarget;
+    const inningsOver = isInningsOver(next.innings2, next.setup.players, next.setup.overs);
+    if(reachedTarget || inningsOver){
+      const result = computeResult(next.innings1.runs, next.innings2, next.setup.players);
+      next.status = 'complete';
+      next.winner = result.winner;
+      next.resultText = result.text;
+    }
+  }
+  return next;
+}
+
+function applyBall(match, ball){
+  if(!canRecordEvent(match)) return match;
+  const inningsKey = match.status === 'innings1' ? 'innings1' : 'innings2';
+  const events = [...match[inningsKey].events, ball];
+  const updatedInnings = recomputeInnings(events);
+  let next = { ...match, [inningsKey]: updatedInnings };
+  return reevaluateStatus(next);
+}
+
+// Edits a ball already in history, at `index`, within whichever innings is
+// currently active (editing a finished innings' history is not offered in
+// the UI, so this only ever touches the live innings).
+function editBallAt(match, index, newBall){
+  const inningsKey = match.status === 'innings1' ? 'innings1' : 'innings2';
+  const events = match[inningsKey].events.slice();
+  events[index] = newBall;
+  const updatedInnings = recomputeInnings(events);
+  let next = { ...match, [inningsKey]: updatedInnings };
+  return reevaluateStatus(next);
+}
+function deleteBallAt(match, index){
+  const inningsKey = match.status === 'innings1' ? 'innings1' : 'innings2';
+  const events = match[inningsKey].events.slice();
+  events.splice(index, 1);
+  const updatedInnings = recomputeInnings(events);
+  let next = { ...match, [inningsKey]: updatedInnings };
+  return reevaluateStatus(next);
+}
+
+function startSecondInnings(match){
+  if(match.status !== 'innings1-complete') return match;
+  return { ...match, status:'innings2' };
+}
+function target(innings1Runs){ return innings1Runs + 1; }
+function runsRequired(innings1Runs, innings2Runs){ return Math.max(0, target(innings1Runs) - innings2Runs); }
+
+// ---- App state (in-memory only) ----
+let state = {
+  match: null,
+  undoStack: [],
+  menuOpen: false,
+  confirmReset: false,
+  confirmNewMatch: false,
+  composer: null, // { mode:'new' } | { mode:'edit', index }
+  composerDraft: null, // { delivery, batRuns, wicket }
+};
+
+function commit(next, forUndo){
+  if(forUndo) state.undoStack = [...state.undoStack, forUndo];
+  state.match = next;
+  render();
+}
+function handleStartMatch(setup){
+  state.match = createMatch(setup);
+  state.undoStack = [];
+  render();
+}
+function handleQuickBall(ball){
+  if(!state.match || !canRecordEvent(state.match)) return;
+  const next = applyBall(state.match, ball);
+  commit(next, state.match);
+}
+function handleStartSecondInnings(){
+  if(!state.match) return;
+  const next = startSecondInnings(state.match);
+  commit(next, state.match);
+}
+function handleUndo(){
+  if(state.undoStack.length === 0) return;
+  const previous = state.undoStack[state.undoStack.length - 1];
+  state.undoStack = state.undoStack.slice(0, -1);
+  state.match = previous;
+  render();
+}
+function resetToSetup(){
+  state.match = null;
+  state.undoStack = [];
+  state.menuOpen = false;
+  state.confirmReset = false;
+  state.confirmNewMatch = false;
+  state.composer = null;
+  render();
+}
+
+function openComposerNew(){
+  if(!state.match || !canRecordEvent(state.match)) return;
+  state.composer = { mode:'new' };
+  state.composerDraft = { delivery:'NORMAL', batRuns:0, wicket:false };
+  render();
+}
+function openComposerEdit(index){
+  const inningsKey = state.match.status === 'innings1' ? 'innings1' : 'innings2';
+  const ball = state.match[inningsKey].events[index];
+  state.composer = { mode:'edit', index };
+  state.composerDraft = { delivery: ball.delivery, batRuns: ball.batRuns, wicket: ball.wicket };
+  render();
+}
+function closeComposer(){
+  state.composer = null;
+  state.composerDraft = null;
+  render();
+}
+function saveComposer(){
+  const draft = state.composerDraft;
+  const ball = draft.delivery === 'DEAD_BALL' ? { delivery:'DEAD_BALL', batRuns:0, wicket:false } : { ...draft };
+  if(state.composer.mode === 'new'){
+    const next = applyBall(state.match, ball);
+    commit(next, state.match);
+  } else {
+    const next = editBallAt(state.match, state.composer.index, ball);
+    state.match = next; // edits don't push undo — they directly correct the record
+    render();
+  }
+  closeComposer();
+}
+function deleteComposerBall(){
+  const next = deleteBallAt(state.match, state.composer.index);
+  state.match = next;
+  closeComposer();
+}
+
+// ---- Rendering (vanilla, no framework) ----
+const root = document.getElementById('root');
+
+function el(tag, attrs, ...children){
+  const e = document.createElement(tag);
+  for(const k in (attrs||{})){
+    if(k === 'class') e.className = attrs[k];
+    else if(k.startsWith('on')) e.addEventListener(k.slice(2).toLowerCase(), attrs[k]);
+    else if(k === 'disabled') { if(attrs[k]) e.setAttribute('disabled',''); }
+    else e.setAttribute(k, attrs[k]);
+  }
+  for(const c of children.flat()){
+    if(c === null || c === undefined) continue;
+    e.appendChild(typeof c === 'string' || typeof c === 'number' ? document.createTextNode(c) : c);
+  }
+  return e;
+}
+
+function renderSetup(){
+  const playersInput = el('input', { id:'players', type:'number', inputmode:'numeric', min:MIN_PLAYERS, max:MAX_PLAYERS, value: String(DEFAULT_PLAYERS) });
+  const oversInput = el('input', { id:'overs', type:'number', inputmode:'numeric', min:MIN_OVERS, max:MAX_OVERS, value: String(DEFAULT_OVERS) });
+  const teamAInput = el('input', { id:'teamA', type:'text', placeholder:'Team A', value:'Team A' });
+  const teamBInput = el('input', { id:'teamB', type:'text', placeholder:'Team B', value:'Team B' });
+
+  // Deliberately not a <form>/submit button: the artifact host's iframe does
+  // not reliably route synthetic clicks through native form submission, so
+  // this is a plain button with its own click handler instead.
+  function startFromInputs(){
+    const setup = validateSetup({
+      players: parseInt(playersInput.value, 10),
+      overs: parseInt(oversInput.value, 10),
+      teamA: teamAInput.value,
+      teamB: teamBInput.value,
+    });
+    handleStartMatch(setup);
+  }
+  [playersInput, oversInput, teamAInput, teamBInput].forEach(input => {
+    input.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); startFromInputs(); } });
+  });
+
+  const form = el('div', { class:'setup-form' },
+    el('div', {class:'field-row'},
+      el('label', {class:'field', for:'players'}, el('span',{class:'field-label'},'Total Players'), playersInput),
+      el('label', {class:'field', for:'overs'}, el('span',{class:'field-label'},'Total Overs'), oversInput),
+    ),
+    el('label', {class:'field', for:'teamA'}, el('span',{class:'field-label'},'Team A'), teamAInput),
+    el('label', {class:'field', for:'teamB'}, el('span',{class:'field-label'},'Team B'), teamBInput),
+    el('button', {type:'button', class:'start-button', onclick: startFromInputs}, 'Start Match'),
+  );
+
+  return el('div', {class:'setup-screen'},
+    el('div', {class:'setup-header'},
+      el('span', {class:'setup-emoji'}, '🏏'),
+      el('h1', {class:'setup-title'}, 'Cricket Scoreboard'),
+      el('p', {class:'setup-subtitle'}, 'Simple umpire scoring'),
+    ),
+    form,
+  );
+}
+
+function renderHeader(){
+  const menuBtn = el('button', { type:'button', class:'app-menu-button', 'aria-label':'Match options', onclick:()=>{ state.menuOpen = !state.menuOpen; render(); } }, '⋮');
+  const header = el('header', {class:'app-header'},
+    el('span', {class:'app-header-title'}, '🏏 Cricket Scoreboard'),
+    menuBtn,
+  );
+  if(state.menuOpen){
+    header.appendChild(el('div', {class:'app-menu'},
+      el('button', {type:'button', class:'app-menu-item', onclick:()=>{ state.menuOpen=false; state.confirmReset=true; render(); }}, 'Reset Match'),
+    ));
+  }
+  return header;
+}
+
+function renderScoreboard(teamName, innings, totalOvers, showTarget, innings1Runs){
+  const box = el('div', {class:'scoreboard', role:'status', 'aria-live':'polite'},
+    el('div', {class:'scoreboard-team'}, teamName + ' — Batting'),
+    el('div', {class:'scoreboard-score'}, String(innings.runs), el('span',{class:'scoreboard-slash'},'/'), String(innings.wickets)),
+    el('div', {class:'scoreboard-overs'}, oversDisplay(innings.legalBalls) + ' / ' + totalOvers + ' Overs'),
+  );
+  if(showTarget){
+    box.appendChild(el('div', {class:'scoreboard-target'},
+      'Target: ' + target(innings1Runs),
+      el('span', {class:'scoreboard-target-dot'}, '•'),
+      'Need ' + runsRequired(innings1Runs, innings.runs),
+    ));
+  }
+  return box;
+}
+
+function renderRunButtons(disabled){
+  const runs = [['0',0],['1',1],['2',2],['3',3],['4',4],['6',6]];
+  return el('div', {class:'run-grid'}, ...runs.map(([label,n])=>
+    el('button', {
+      type:'button', class:'run-button run-' + label, disabled,
+      'aria-label': label + ' run' + (label==='1' ? '' : 's'),
+      onclick:()=>handleQuickBall({ delivery:'NORMAL', batRuns:n, wicket:false }),
+    }, label)
+  ));
+}
+
+function renderEventButtons(disabled){
+  return el('div', {class:'event-grid'},
+    el('button', {type:'button', class:'event-button event-wicket', disabled, onclick:()=>handleQuickBall({delivery:'NORMAL', batRuns:0, wicket:true})}, 'WICKET'),
+    el('button', {type:'button', class:'event-button event-wide', disabled, onclick:()=>handleQuickBall({delivery:'WIDE', batRuns:0, wicket:false})}, 'WIDE'),
+    el('button', {type:'button', class:'event-button event-noball', disabled, onclick:()=>handleQuickBall({delivery:'NO_BALL', batRuns:0, wicket:false})}, 'NO BALL'),
+    el('button', {type:'button', class:'event-button event-deadball', disabled, onclick:()=>handleQuickBall({delivery:'DEAD_BALL', batRuns:0, wicket:false})}, 'DEAD BALL'),
+  );
+}
+
+function renderSecondaryRow(disabled){
+  return el('div', {class:'secondary-row'},
+    el('button', {type:'button', class:'undo-button', disabled: state.undoStack.length===0, 'aria-label':'Undo last action', onclick: handleUndo}, '↩ Undo Last'),
+    el('button', {type:'button', class:'custom-button', disabled, 'aria-label':'Record a custom ball', onclick: openComposerNew}, '✎ Custom Ball'),
+  );
+}
+
+function groupByOverWithIndex(events){
+  // Same as before but keeps the original event index on each ball so a
+  // tap/hold on a chip can edit the right entry, even across over boundaries.
+  const groups = []; let current = []; let legalCount = 0;
+  events.forEach((ball, index) => {
+    current.push({ ball, index });
+    if(isLegalDelivery(ball.delivery)){
+      legalCount++;
+      if(legalCount % 6 === 0){ groups.push(current); current = []; }
+    }
+  });
+  if(current.length > 0) groups.push(current);
+  return groups;
+}
+
+function attachLongPress(chipEl, onTrigger){
+  let timer = null;
+  let fired = false;
+  const start = () => {
+    fired = false;
+    timer = setTimeout(() => { fired = true; onTrigger(); }, 480);
+  };
+  const cancel = () => { if(timer) clearTimeout(timer); };
+  chipEl.addEventListener('pointerdown', start);
+  chipEl.addEventListener('pointerup', cancel);
+  chipEl.addEventListener('pointerleave', cancel);
+  chipEl.addEventListener('pointercancel', cancel);
+  chipEl.addEventListener('dblclick', (e) => { e.preventDefault(); if(!fired) onTrigger(); });
+}
+
+function renderHistory(events){
+  if(events.length === 0){
+    return el('div', {class:'history'},
+      el('div', {class:'history-title-row'}, el('h2',{class:'history-title'},'Ball History')),
+      el('p',{class:'history-empty'},'No deliveries recorded yet.'));
+  }
+  const overs = groupByOverWithIndex(events);
+  return el('div', {class:'history'},
+    el('div', {class:'history-title-row'},
+      el('h2', {class:'history-title'}, 'Ball History'),
+      el('span', {class:'history-hint'}, 'hold a ball to edit'),
+    ),
+    el('div', {class:'history-overs'}, ...overs.map((over,i)=>
+      el('div', {class:'history-over'},
+        el('span', {class:'history-over-label'}, 'Over ' + (i+1)),
+        el('div', {class:'history-chips'}, ...over.map(({ball, index}) => {
+          const chip = el('span', {class:ballChipClass(ball), tabindex:'0', role:'button',
+            'aria-label':'Ball: ' + ballChipLabel(ball) + '. Hold or double-click to edit.'}, ballChipLabel(ball));
+          attachLongPress(chip, () => openComposerEdit(index));
+          return chip;
+        })),
+      )
+    )),
+  );
+}
+
+function renderInningsSummary(setup, innings1){
+  return el('div', {class:'innings-summary'},
+    el('p', {class:'innings-summary-eyebrow'}, 'Innings Complete'),
+    el('h2', {class:'innings-summary-team'}, setup.teamA),
+    el('div', {class:'innings-summary-score'}, innings1.runs + '/' + innings1.wickets),
+    el('p', {class:'innings-summary-overs'}, oversDisplay(innings1.legalBalls) + ' Overs'),
+    el('button', {type:'button', class:'innings-summary-button', onclick: handleStartSecondInnings}, 'Start ' + setup.teamB + ' Innings'),
+  );
+}
+
+function renderResult(match){
+  const { setup, innings1, innings2, winner, resultText } = match;
+  const headline = winner === 'TIE' ? 'Match Tied' : ('🏆 ' + (winner === 'A' ? setup.teamA : setup.teamB) + ' Wins');
+  const box = el('div', {class:'result-screen'},
+    el('h2', {class:'result-headline'}, headline),
+  );
+  if(winner !== 'TIE') box.appendChild(el('p', {class:'result-subline'}, resultText || ''));
+  box.appendChild(el('div', {class:'result-card'},
+    el('div', {class:'result-row'},
+      el('span', {class:'result-team'}, setup.teamA),
+      el('span', {class:'result-score'}, innings1.runs + '/' + innings1.wickets, el('span', {class:'result-overs'}, ' (' + oversDisplay(innings1.legalBalls) + ')')),
+    ),
+    el('div', {class:'result-row'},
+      el('span', {class:'result-team'}, setup.teamB),
+      el('span', {class:'result-score'}, innings2.runs + '/' + innings2.wickets, el('span', {class:'result-overs'}, ' (' + oversDisplay(innings2.legalBalls) + ')')),
+    ),
+  ));
+  box.appendChild(el('button', {type:'button', class:'result-new-match', onclick:()=>{ state.confirmNewMatch = true; render(); }}, 'New Match'));
+  return box;
+}
+
+function renderConfirm(){
+  return el('div', {class:'confirm-overlay', role:'dialog', 'aria-modal':'true'},
+    el('div', {class:'confirm-card'},
+      el('p', {class:'confirm-text'}, 'Start a new match? Current match data will be cleared.'),
+      el('div', {class:'confirm-actions'},
+        el('button', {type:'button', class:'confirm-cancel', onclick:()=>{ state.confirmReset=false; state.confirmNewMatch=false; render(); }}, 'Cancel'),
+        el('button', {type:'button', class:'confirm-confirm', onclick: resetToSetup}, 'Start New Match'),
+      ),
+    ),
+  );
+}
+
+// ---- Composer (Custom Ball / edit ball) ----
+function renderComposer(){
+  const draft = state.composerDraft;
+  const isEdit = state.composer.mode === 'edit';
+  const isDead = draft.delivery === 'DEAD_BALL';
+
+  const deliveries = ['NORMAL','WIDE','NO_BALL','DEAD_BALL'];
+  const segmented = el('div', {class:'segmented'}, ...deliveries.map(d =>
+    el('button', {
+      type:'button', class: draft.delivery === d ? 'active' : '',
+      onclick: () => {
+        draft.delivery = d;
+        if(d === 'DEAD_BALL'){ draft.batRuns = 0; draft.wicket = false; }
+        render();
+      }
+    }, DELIVERY_LABEL[d])
+  ));
+
+  const stepperValue = el('span', {class:'stepper-value'}, String(draft.batRuns));
+  const stepperRow = el('div', {class:'stepper-row'},
+    el('button', {type:'button', class:'stepper-btn', disabled:isDead || draft.batRuns<=0, onclick:()=>{ draft.batRuns = Math.max(0, draft.batRuns-1); render(); }}, '−'),
+    stepperValue,
+    el('button', {type:'button', class:'stepper-btn', disabled:isDead || draft.batRuns>=12, onclick:()=>{ draft.batRuns = Math.min(12, draft.batRuns+1); render(); }}, '+'),
+  );
+  const quickRuns = el('div', {class:'quick-runs'}, ...[0,1,2,3,4,6].map(n =>
+    el('button', {type:'button', class: draft.batRuns===n ? 'active':'', disabled:isDead, onclick:()=>{ draft.batRuns = n; render(); }}, String(n))
+  ));
+
+  const toggle = el('div', {class:'toggle-switch' + (draft.wicket ? ' on' : '')});
+  const wicketRow = el('div', {class:'wicket-toggle-row' + (draft.wicket ? ' on' : ''), onclick: () => {
+      if(isDead) return;
+      draft.wicket = !draft.wicket; render();
+    }},
+    el('span', {class:'wicket-toggle-label'}, 'Wicket on this ball'),
+    toggle,
+  );
+
+  const total = isDead ? 0 : ballTotalRuns(draft);
+  const legal = isLegalDelivery(draft.delivery);
+  const preview = el('div', {class:'composer-preview'},
+    'Adds ', el('b', {}, String(total) + ' run' + (total===1?'':'s')), ' to the total. ',
+    'Legal ball: ', el('b', {}, legal ? 'Yes' : 'No'), '. ',
+    'Wicket: ', el('b', {}, draft.wicket ? 'Yes' : 'No'), '.',
+  );
+
+  const card = el('div', {class:'composer-card'},
+    el('h2', {class:'composer-title'}, isEdit ? 'Edit ball' : 'Custom ball'),
+    el('p', {class:'composer-sub'}, isEdit
+      ? 'Adjust the delivery, runs, or wicket for this ball — the scoreboard recalculates automatically.'
+      : 'Compose deliveries the quick buttons can\'t — a no-ball hit for six, a run-out mid-run, a stumping off a wide.'),
+    el('div', {class:'composer-section-label'}, 'Delivery'),
+    segmented,
+    el('div', {class:'composer-section-label'}, 'Runs actually run'),
+    stepperRow,
+    quickRuns,
+    isDead ? el('p', {class:'composer-note'}, 'Dead ball voids the delivery — no runs, no wicket.') : null,
+    wicketRow,
+    preview,
+    el('div', {class:'composer-actions'},
+      el('button', {type:'button', class:'composer-cancel', onclick: closeComposer}, 'Cancel'),
+      el('button', {type:'button', class:'composer-save', onclick: saveComposer}, isEdit ? 'Save changes' : 'Add ball'),
+    ),
+    isEdit ? el('button', {type:'button', class:'composer-delete', onclick: deleteComposerBall}, 'Remove this ball entirely') : null,
+  );
+
+  return el('div', {class:'composer-overlay', role:'dialog', 'aria-modal':'true'}, card);
+}
+
+function render(){
+  root.innerHTML = '';
+  const match = state.match;
+
+  if(!match){
+    root.appendChild(renderSetup());
+    return;
+  }
+
+  const { setup, innings1, innings2, status } = match;
+
+  if(status !== 'complete') root.appendChild(renderHeader());
+
+  if(status === 'innings1'){
+    const disabled = !canRecordEvent(match);
+    root.appendChild(renderScoreboard(setup.teamA, innings1, setup.overs, false));
+    root.appendChild(renderRunButtons(disabled));
+    root.appendChild(renderEventButtons(disabled));
+    root.appendChild(renderSecondaryRow(disabled));
+    root.appendChild(renderHistory(innings1.events));
+  } else if(status === 'innings1-complete'){
+    root.appendChild(renderInningsSummary(setup, innings1));
+  } else if(status === 'innings2'){
+    const disabled = !canRecordEvent(match);
+    root.appendChild(renderScoreboard(setup.teamB, innings2, setup.overs, true, innings1.runs));
+    root.appendChild(renderRunButtons(disabled));
+    root.appendChild(renderEventButtons(disabled));
+    root.appendChild(renderSecondaryRow(disabled));
+    root.appendChild(renderHistory(innings2.events));
+  } else if(status === 'complete'){
+    root.appendChild(renderResult(match));
+  }
+
+  if(state.confirmReset || state.confirmNewMatch){
+    root.appendChild(renderConfirm());
+  }
+  if(state.composer){
+    root.appendChild(renderComposer());
+  }
+}
+
+render();
+</script>
+</body>
+</html>
