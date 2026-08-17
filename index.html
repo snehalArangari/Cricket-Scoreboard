@@ -9,14 +9,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
   :root{
-    --bg:#0a1410; --surface:#122019; --surface-raised:#17281f; --surface-pressed:#0e1a14;
+    --bg:#04190e; --surface:#0e261a; --surface-raised:#1c372a; --surface-pressed:#0e1a14;
     --line:#24382d; --text:#eaf2ec; --text-muted:#86a190; --text-dim:#526258;
-    --score-amber:#ffb627; --accent-green:#34d399; --wicket-red:#f0533d; --extra-amber:#f5a623; --deadball:#64766c;
+    --score-amber:#f2ac19; --accent-green:#a4e238; --wicket-red:#e62b34; --extra-amber:#f2ac19; --noball-blue:#4cb0e5; --deadball:#64766c;
     --font-display:'Rajdhani','Space Grotesk',sans-serif; --font-body:'Space Grotesk',system-ui,sans-serif;
-    --radius-sm:8px; --radius-md:14px; --radius-lg:20px;
+    --radius-sm:8px; --radius-md:14px; --radius-lg:20px; --radius-xl:22px;
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;background:#05100c;color:var(--text);font-family:var(--font-body);}
+  html,body{margin:0;padding:0;background:#04190e;color:var(--text);font-family:var(--font-body);}
   body{min-height:100vh;display:flex;justify-content:center;padding:24px 12px;}
   button{font-family:inherit;color:inherit;border:none;background:none;cursor:pointer;}
   button:focus-visible,input:focus-visible{outline:3px solid var(--accent-green);outline-offset:2px;}
@@ -51,30 +51,39 @@
     font-weight:600;font-size:13px;white-space:nowrap;color:var(--wicket-red);}
   .app-menu-item:active{background:var(--surface-raised);}
 
-  .scoreboard{background:var(--surface);border-bottom:1px solid var(--line);padding:18px 20px 20px;text-align:center;}
-  .scoreboard-team{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-green);margin-bottom:6px;}
-  .scoreboard-score{font-family:var(--font-display);font-weight:700;font-size:58px;line-height:1;color:var(--score-amber);
+  .scoreboard{background:var(--surface);border-bottom:1px solid var(--line);padding:18px 20px 20px;text-align:left;}
+  .scoreboard-header-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;}
+  .scoreboard-team{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-green);}
+  .scoreboard-innings-badge{flex-shrink:0;background:var(--surface-raised);border:1px solid var(--line);border-radius:999px;
+    padding:5px 12px;font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--text);}
+  .scoreboard-score{font-family:var(--font-display);font-weight:700;font-size:58px;line-height:1;color:var(--text);
     letter-spacing:.01em;font-variant-numeric:tabular-nums;}
   .scoreboard-slash{color:var(--text-dim);margin:0 3px;font-weight:500;}
   .scoreboard-overs{margin-top:4px;font-size:16px;font-weight:600;color:var(--text-muted);font-variant-numeric:tabular-nums;}
-  .scoreboard-target{margin-top:9px;display:inline-flex;align-items:center;gap:8px;background:var(--surface-raised);
-    border:1px solid var(--line);border-radius:999px;padding:5px 13px;font-size:12px;font-weight:600;color:var(--text);}
-  .scoreboard-target-dot{color:var(--text-dim);}
+  .scoreboard-divider{margin:16px 0 14px;border-top:1px solid var(--line);}
+  .scoreboard-stats-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+  .scoreboard-stat{display:flex;flex-direction:column;gap:5px;}
+  .scoreboard-stat-right{align-items:flex-end;text-align:right;}
+  .scoreboard-stat-label{font-size:12px;font-weight:600;color:var(--text-muted);}
+  .scoreboard-stat-value{font-family:var(--font-display);font-weight:700;font-size:20px;font-variant-numeric:tabular-nums;}
+  .scoreboard-stat-value.target-value{color:var(--accent-green);}
+  .scoreboard-stat-value.required-value{color:var(--score-amber);}
+  .scoreboard-stat-sub{margin-left:6px;font-family:var(--font-body);font-size:12px;font-weight:600;color:var(--text-muted);}
+  .scoreboard-note{margin-top:12px;font-size:11px;font-weight:500;color:var(--text-dim);}
 
   .run-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;padding:14px 14px 0;}
-  .run-button{aspect-ratio:1.5/1;border-radius:var(--radius-md);background:var(--surface-raised);border:1px solid var(--line);
-    font-family:var(--font-display);font-weight:700;font-size:30px;color:var(--text);display:flex;align-items:center;justify-content:center;}
-  .run-button:active{transform:scale(.95);background:var(--surface-pressed);}
+  .run-button{aspect-ratio:1.5/1;border-radius:var(--radius-xl);background:var(--accent-green);border:none;
+    font-family:var(--font-display);font-weight:700;font-size:30px;color:#0c1a08;display:flex;align-items:center;justify-content:center;}
+  .run-button:active{transform:scale(.95);filter:brightness(.92);}
   .run-button:disabled{opacity:.35;}
-  .run-4{color:var(--accent-green);border-color:rgba(52,211,153,.35);}
-  .run-6{color:var(--score-amber);border-color:rgba(255,182,39,.35);}
 
   .event-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:10px 14px 0;}
-  .event-button{min-height:48px;border-radius:var(--radius-md);border:1px solid var(--line);font-weight:700;font-size:14px;letter-spacing:.04em;}
-  .event-button:active{transform:scale(.96);}
+  .event-button{min-height:48px;border-radius:var(--radius-xl);border:none;font-weight:700;font-size:14px;letter-spacing:.04em;}
+  .event-button:active{transform:scale(.96);filter:brightness(.92);}
   .event-button:disabled{opacity:.35;}
-  .event-wicket{background:rgba(240,83,61,.14);color:var(--wicket-red);border-color:rgba(240,83,61,.4);}
-  .event-wide,.event-noball{background:rgba(245,166,35,.12);color:var(--extra-amber);border-color:rgba(245,166,35,.35);}
+  .event-wicket{background:var(--wicket-red);color:#fff;}
+  .event-wide{background:var(--extra-amber);color:#12100a;}
+  .event-noball{background:var(--noball-blue);color:#0a1620;}
   .event-deadball{background:var(--surface-raised);color:var(--text-muted);}
 
   .secondary-row{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:10px 14px 0;}
@@ -82,7 +91,7 @@
     background:transparent;color:var(--text);font-weight:600;font-size:13px;}
   .undo-button:active,.custom-button:active{transform:scale(.97);}
   .undo-button:disabled{opacity:.3;color:var(--text-muted);}
-  .custom-button{color:var(--accent-green);border-color:rgba(52,211,153,.35);}
+  .custom-button{color:var(--accent-green);border-color:rgba(164,226,56,.35);}
 
   .history{margin-top:16px;padding:0 14px 20px;}
   .history-title-row{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;}
@@ -97,9 +106,9 @@
     display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text-muted);
     user-select:none;-webkit-user-select:none;touch-action:manipulation;}
   .chip:active{transform:scale(.92);}
-  .chip-boundary{color:var(--accent-green);border-color:rgba(52,211,153,.35);}
-  .chip-wicket{color:var(--wicket-red);border-color:rgba(240,83,61,.4);background:rgba(240,83,61,.1);}
-  .chip-extra{color:var(--extra-amber);border-color:rgba(245,166,35,.35);}
+  .chip-boundary{color:var(--accent-green);border-color:rgba(164,226,56,.35);}
+  .chip-wicket{color:var(--wicket-red);border-color:rgba(230,43,52,.4);background:rgba(230,43,52,.1);}
+  .chip-extra{color:var(--extra-amber);border-color:rgba(242,172,25,.35);}
   .chip-dead{color:var(--text-dim);}
 
   .innings-summary,.result-screen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px 24px 40px;}
@@ -136,7 +145,7 @@
   .segmented{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:18px;}
   .segmented button{padding:10px 4px;border-radius:var(--radius-sm);border:1.5px solid var(--line);background:var(--surface-raised);
     font-size:12px;font-weight:700;color:var(--text-muted);}
-  .segmented button.active{border-color:var(--accent-green);color:var(--accent-green);background:rgba(52,211,153,.12);}
+  .segmented button.active{border-color:var(--accent-green);color:var(--accent-green);background:rgba(164,226,56,.12);}
   .segmented button:disabled{opacity:.35;}
 
   .stepper-row{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:6px;}
@@ -148,12 +157,12 @@
   .quick-runs{display:flex;gap:6px;justify-content:center;margin-bottom:18px;flex-wrap:wrap;}
   .quick-runs button{width:36px;height:36px;border-radius:50%;background:var(--surface-raised);border:1px solid var(--line);
     font-size:13px;font-weight:700;color:var(--text-muted);}
-  .quick-runs button.active{background:rgba(255,182,39,.15);border-color:var(--score-amber);color:var(--score-amber);}
+  .quick-runs button.active{background:rgba(242,172,25,.15);border-color:var(--score-amber);color:var(--score-amber);}
   .quick-runs button:disabled{opacity:.3;}
 
   .wicket-toggle-row{display:flex;align-items:center;justify-content:space-between;background:var(--surface-raised);
     border:1px solid var(--line);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:18px;}
-  .wicket-toggle-row.on{border-color:rgba(240,83,61,.5);background:rgba(240,83,61,.1);}
+  .wicket-toggle-row.on{border-color:rgba(230,43,52,.5);background:rgba(230,43,52,.1);}
   .wicket-toggle-label{font-weight:600;font-size:14px;}
   .toggle-switch{width:46px;height:26px;border-radius:999px;background:var(--line);position:relative;flex-shrink:0;}
   .toggle-switch.on{background:var(--wicket-red);}
@@ -170,7 +179,7 @@
   .composer-actions button{flex:1;min-height:48px;border-radius:var(--radius-md);font-weight:700;font-size:14px;}
   .composer-cancel{background:var(--surface-raised);color:var(--text);}
   .composer-save{background:var(--accent-green);color:#06241a;}
-  .composer-delete{background:transparent;color:var(--wicket-red);border:1.5px solid rgba(240,83,61,.4);
+  .composer-delete{background:transparent;color:var(--wicket-red);border:1.5px solid rgba(230,43,52,.4);
     width:100%;min-height:42px;border-radius:var(--radius-md);font-weight:700;font-size:13px;margin-top:10px;}
 
   .preview-note{max-width:400px;margin:0 auto 14px;text-align:center;font-size:12px;color:#6b8177;padding:0 8px;}
@@ -402,13 +411,25 @@ async function idbLoadMatch(){
     return record;
   } catch(e){ console.warn('Could not load match from IndexedDB:', e); return null; }
 }
+// Every render's persistMatchState() call fires its IndexedDB write async
+// and independently — without ordering, a save queued just before "Start
+// New Match" (e.g. from opening the confirm popup, which still saves the
+// live match) could finish AFTER the clear it was queued before, leaving
+// stale data behind. Routing every operation through this single chained
+// queue guarantees they run one at a time, in the order they were called.
+let idbQueue = Promise.resolve();
+function idbEnqueue(task){
+  idbQueue = idbQueue.then(task, task);
+  return idbQueue;
+}
 // Called at the end of every render — the single point where state.match
 // reflects the latest change. Fire-and-forget: the UI never waits on it.
 function persistMatchState(){
   if(!state.match || state.match.status === 'complete'){
-    idbClearMatch();
+    idbEnqueue(() => idbClearMatch());
   } else {
-    idbSaveMatch(state.match, state.undoStack);
+    const snapshotMatch = state.match, snapshotUndo = state.undoStack;
+    idbEnqueue(() => idbSaveMatch(snapshotMatch, snapshotUndo));
   }
 }
 
@@ -560,18 +581,34 @@ function renderHeader(){
   return header;
 }
 
-function renderScoreboard(teamName, innings, totalOvers, showTarget, innings1Runs){
-  const box = el('div', {class:'scoreboard', role:'status', 'aria-live':'polite'},
+function renderScoreboard(teamName, innings, setup, isSecondInnings, innings1Runs){
+  const inningsLabel = 'Innings ' + (isSecondInnings ? '2' : '1');
+  const headerRow = el('div', {class:'scoreboard-header-row'},
     el('div', {class:'scoreboard-team'}, teamName + ' — Batting'),
-    el('div', {class:'scoreboard-score'}, String(innings.runs), el('span',{class:'scoreboard-slash'},'/'), String(innings.wickets)),
-    el('div', {class:'scoreboard-overs'}, oversDisplay(innings.legalBalls) + ' / ' + totalOvers + ' Overs'),
+    el('span', {class:'scoreboard-innings-badge'}, inningsLabel),
   );
-  if(showTarget){
-    box.appendChild(el('div', {class:'scoreboard-target'},
-      'Target: ' + target(innings1Runs),
-      el('span', {class:'scoreboard-target-dot'}, '•'),
-      'Need ' + runsRequired(innings1Runs, innings.runs),
+  const box = el('div', {class:'scoreboard', role:'status', 'aria-live':'polite'},
+    headerRow,
+    el('div', {class:'scoreboard-score'}, String(innings.runs), el('span',{class:'scoreboard-slash'},'/'), String(innings.wickets)),
+    el('div', {class:'scoreboard-overs'}, oversDisplay(innings.legalBalls) + ' / ' + setup.overs + ' Overs'),
+  );
+  if(isSecondInnings){
+    const ballsLeft = Math.max(0, maxLegalBalls(setup.overs) - innings.legalBalls);
+    box.appendChild(el('div', {class:'scoreboard-divider'}));
+    box.appendChild(el('div', {class:'scoreboard-stats-row'},
+      el('div', {class:'scoreboard-stat'},
+        el('span', {class:'scoreboard-stat-label'}, 'Target'),
+        el('span', {class:'scoreboard-stat-value target-value'}, String(target(innings1Runs))),
+      ),
+      el('div', {class:'scoreboard-stat scoreboard-stat-right'},
+        el('span', {class:'scoreboard-stat-label'}, 'Runs required'),
+        el('span', {class:'scoreboard-stat-value required-value'},
+          String(runsRequired(innings1Runs, innings.runs)),
+          el('span', {class:'scoreboard-stat-sub'}, 'off ' + ballsLeft + ' ball' + (ballsLeft===1?'':'s')),
+        ),
+      ),
     ));
+    box.appendChild(el('div', {class:'scoreboard-note'}, 'Max wickets ' + maxWickets(setup.players) + ' · ' + setup.players + ' players'));
   }
   return box;
 }
@@ -776,6 +813,7 @@ function render(){
 
   if(!match){
     root.appendChild(renderSetup());
+    persistMatchState();
     return;
   }
 
@@ -785,7 +823,7 @@ function render(){
 
   if(status === 'innings1'){
     const disabled = !canRecordEvent(match);
-    root.appendChild(renderScoreboard(setup.teamA, innings1, setup.overs, false));
+    root.appendChild(renderScoreboard(setup.teamA, innings1, setup, false));
     root.appendChild(renderRunButtons(disabled));
     root.appendChild(renderEventButtons(disabled));
     root.appendChild(renderSecondaryRow(disabled));
@@ -794,7 +832,7 @@ function render(){
     root.appendChild(renderInningsSummary(setup, innings1));
   } else if(status === 'innings2'){
     const disabled = !canRecordEvent(match);
-    root.appendChild(renderScoreboard(setup.teamB, innings2, setup.overs, true, innings1.runs));
+    root.appendChild(renderScoreboard(setup.teamB, innings2, setup, true, innings1.runs));
     root.appendChild(renderRunButtons(disabled));
     root.appendChild(renderEventButtons(disabled));
     root.appendChild(renderSecondaryRow(disabled));
