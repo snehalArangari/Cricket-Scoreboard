@@ -178,7 +178,7 @@
 </head>
 <body>
 <div style="width:100%;display:flex;flex-direction:column;align-items:center;">
-  <div class="preview-note">Live Cricket score and Tap and hold (or double-click) any chip in Ball History to edit it. Refreshing resets the match.</div>
+  <div class="preview-note">Live Cricket score and Tap and hold (or double-click) any chip in Ball History to edit it. Your in-progress match is saved on this device and survives a refresh — it's cleared automatically once the match ends.</div>
   <div id="root" class="app-shell"></div>
 </div>
 
@@ -332,7 +332,7 @@ function startSecondInnings(match){
 function target(innings1Runs){ return innings1Runs + 1; }
 function runsRequired(innings1Runs, innings2Runs){ return Math.max(0, target(innings1Runs) - innings2Runs); }
 
-// ---- App state (in-memory only) ----
+// ---- App state (persisted to IndexedDB while a match is live) ----
 let state = {
   match: null,
   undoStack: [],
@@ -342,6 +342,75 @@ let state = {
   composer: null, // { mode:'new' } | { mode:'edit', index }
   composerDraft: null, // { delivery, batRuns, wicket }
 };
+
+// ---- IndexedDB persistence ----
+// Keeps the live match (score, wickets, ball history, undo stack) around
+// across page refreshes/tab closes while it's in progress. As soon as the
+// match reaches 'complete' (or the user resets/starts a new one), the saved
+// record is deleted — nothing lingers once the match is over.
+const IDB_NAME = 'cricketScoreboardDB';
+const IDB_VERSION = 1;
+const IDB_STORE = 'matchState';
+const IDB_KEY = 'current';
+
+function idbOpen(){
+  return new Promise((resolve, reject) => {
+    if(!('indexedDB' in window)){ reject(new Error('IndexedDB unsupported')); return; }
+    const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if(!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbSaveMatch(match, undoStack){
+  try{
+    const db = await idbOpen();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).put({ match, undoStack }, IDB_KEY);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  } catch(e){ console.warn('Could not save match to IndexedDB:', e); }
+}
+async function idbClearMatch(){
+  try{
+    const db = await idbOpen();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).delete(IDB_KEY);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  } catch(e){ console.warn('Could not clear match from IndexedDB:', e); }
+}
+async function idbLoadMatch(){
+  try{
+    const db = await idbOpen();
+    const record = await new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const req = tx.objectStore(IDB_STORE).get(IDB_KEY);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+    db.close();
+    return record;
+  } catch(e){ console.warn('Could not load match from IndexedDB:', e); return null; }
+}
+// Called at the end of every render — the single point where state.match
+// reflects the latest change. Fire-and-forget: the UI never waits on it.
+function persistMatchState(){
+  if(!state.match || state.match.status === 'complete'){
+    idbClearMatch();
+  } else {
+    idbSaveMatch(state.match, state.undoStack);
+  }
+}
 
 function commit(next, forUndo){
   if(forUndo) state.undoStack = [...state.undoStack, forUndo];
@@ -740,9 +809,22 @@ function render(){
   if(state.composer){
     root.appendChild(renderComposer());
   }
+
+  persistMatchState();
 }
 
-render();
+// ---- Init ----
+// On load, try to resume an in-progress match saved in IndexedDB. A match
+// that had already finished is never restored (it would already have been
+// cleared, but this is a safety net for older/partial records too).
+(async function init(){
+  const saved = await idbLoadMatch();
+  if(saved && saved.match && saved.match.status !== 'complete'){
+    state.match = saved.match;
+    state.undoStack = Array.isArray(saved.undoStack) ? saved.undoStack : [];
+  }
+  render();
+})();
 </script>
 </body>
 </html>
