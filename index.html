@@ -183,12 +183,97 @@
     width:100%;min-height:42px;border-radius:var(--radius-md);font-weight:700;font-size:13px;margin-top:10px;}
 
   .preview-note{max-width:400px;margin:0 auto 14px;text-align:center;font-size:12px;color:#6b8177;padding:0 8px;}
+
+  /* Shared by the tournament match log (renderTournamentMatchRow) — a
+     match-summary card, no longer used for a standalone history browser. */
+  .history-entry{background:var(--surface-raised);border:1px solid var(--line);border-radius:var(--radius-md);
+    padding:12px 14px;user-select:none;-webkit-user-select:none;touch-action:manipulation;}
+  .history-entry:active{transform:scale(.98);}
+  .history-entry-date{font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;}
+  .history-entry-row{display:flex;align-items:baseline;justify-content:space-between;padding:2px 0;gap:10px;}
+  .history-entry-team{font-weight:600;font-size:14px;color:var(--text-muted);}
+  .history-entry-team.winner{color:var(--accent-green);}
+  .history-entry-score{font-family:var(--font-display);font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;flex-shrink:0;}
+  .history-entry-overs{font-family:var(--font-body);font-size:11px;font-weight:500;color:var(--text-dim);}
+  .history-entry-result{margin-top:8px;padding-top:8px;border-top:1px solid var(--line);font-size:12px;font-weight:600;color:var(--score-amber);}
+
+  /* ---- Tabs ---- */
+  .app-tabs-shell{width:100%;max-width:400px;display:flex;flex-direction:column;align-items:stretch;}
+  .app-tabs{display:flex;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:5px;margin-bottom:14px;}
+  .tab-button{flex:1;min-height:44px;border-radius:var(--radius-md);background:transparent;color:var(--text-muted);
+    font-family:var(--font-display);font-weight:700;font-size:14px;letter-spacing:.02em;}
+  .tab-button.active{background:var(--accent-green);color:#06241a;}
+  .tab-button:active{transform:scale(.97);}
+  .tab-content{display:none;flex-direction:column;align-items:center;}
+  .tab-content.active{display:flex;}
+
+  /* ---- Tournament hub ---- */
+  .tournament-hub{padding:18px 16px 20px;display:flex;flex-direction:column;}
+  .tournament-hub-title{font-family:var(--font-display);font-weight:700;font-size:19px;}
+  .tournament-hub-subtitle{margin-top:6px;font-size:12px;color:var(--text-dim);line-height:1.5;}
+  .tournament-hub-hint{margin-top:10px;font-size:11px;color:var(--text-dim);text-align:center;}
+  .tournament-list{display:flex;flex-direction:column;gap:10px;margin-top:16px;}
+  .tournament-card{background:var(--surface-raised);border:1px solid var(--line);border-radius:var(--radius-md);
+    padding:14px 16px;user-select:none;-webkit-user-select:none;touch-action:manipulation;}
+  .tournament-card:active{transform:scale(.98);}
+  .tournament-name{font-family:var(--font-display);font-weight:700;font-size:16px;}
+  .tournament-meta{margin-top:4px;font-size:12px;color:var(--text-muted);}
+  .btn-new-tournament{margin-top:18px;min-height:50px;background:var(--accent-green);color:#06241a;
+    font-family:var(--font-display);font-weight:700;font-size:15px;border-radius:var(--radius-md);}
+  .btn-new-tournament:active{transform:scale(.98);}
+  .empty-state{text-align:center;padding:30px 6px 6px;color:var(--text-muted);}
+  .empty-state p{margin-bottom:10px;}
+  .empty-state-sub{font-size:13px;color:var(--text-dim);line-height:1.5;}
+
+  /* ---- Tournament dashboard ---- */
+  .tournament-dashboard{padding:18px 16px 24px;display:flex;flex-direction:column;}
+  .tournament-dash-header{display:flex;align-items:center;gap:10px;}
+  .btn-back{min-height:36px;padding:0 12px;border-radius:var(--radius-sm);border:1px solid var(--line);
+    background:transparent;color:var(--text-muted);font-weight:600;font-size:13px;flex-shrink:0;}
+  .btn-back:active{background:var(--surface-raised);}
+  .tournament-dash-title{font-family:var(--font-display);font-weight:700;font-size:18px;flex:1;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .tournament-dash-meta{margin-top:10px;font-size:12px;color:var(--text-dim);}
+  .tournament-section-title{margin-top:22px;margin-bottom:10px;font-size:12px;font-weight:700;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--text-dim);}
+  .btn-delete-tournament{margin-top:26px;min-height:42px;border-radius:var(--radius-md);border:1.5px solid rgba(230,43,52,.4);
+    background:transparent;color:var(--wicket-red);font-weight:700;font-size:13px;}
+  .btn-delete-tournament:active{background:rgba(230,43,52,.08);}
+
+  .standings-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .standings-table{width:100%;border-collapse:collapse;font-size:12px;}
+  .standings-table th{padding:8px 6px;text-align:center;color:var(--text-dim);font-weight:700;font-size:10px;
+    letter-spacing:.04em;text-transform:uppercase;border-bottom:1px solid var(--line);white-space:nowrap;}
+  .standings-table th:nth-child(2){text-align:left;}
+  .standings-table td{padding:10px 6px;text-align:center;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;}
+  .standings-rank{color:var(--text-dim);font-weight:700;}
+  .standings-team{text-align:left;font-weight:600;color:var(--text);white-space:nowrap;}
+  .standings-number{color:var(--text-muted);}
+  .standings-points{color:var(--accent-green);font-weight:700;font-family:var(--font-display);}
+  .tournament-match-list{display:flex;flex-direction:column;gap:10px;}
+
+  /* ---- Form fields shared by tournament dialogs ---- */
+  .field textarea{background:var(--surface);border:1.5px solid var(--line);border-radius:var(--radius-md);
+    padding:14px 16px;font-size:15px;font-weight:600;color:var(--text);width:100%;font-family:inherit;resize:vertical;}
+  .field textarea:focus{border-color:var(--accent-green);}
+  .field-select{background:var(--surface);border:1.5px solid var(--line);border-radius:var(--radius-md);
+    padding:12px 14px;font-size:15px;font-weight:600;color:var(--text);width:100%;margin-bottom:14px;font-family:inherit;}
+  .field-select:focus{border-color:var(--accent-green);}
 </style>
 </head>
 <body>
-<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
-  <div class="preview-note">Live Cricket score and Tap and hold (or double-click) any chip in Ball History to edit it. Your in-progress match is saved on this device and survives a refresh — it's cleared automatically once the match ends.</div>
-  <div id="root" class="app-shell"></div>
+<div class="app-tabs-shell">
+  <div class="app-tabs">
+    <button type="button" class="tab-button active" id="tabBtnMatch">🏏 Match</button>
+    <button type="button" class="tab-button" id="tabBtnTournament">🏆 Tournament</button>
+  </div>
+  <div id="match-tab-content" class="tab-content active">
+    <div class="preview-note">Live Cricket score and Tap and hold (or double-click) any chip in Ball History to edit it. Your in-progress match is saved on this device and survives a refresh — it's cleared automatically once the match ends. When a match finishes, you can link it to a 🏆 Tournament for standings.</div>
+    <div id="root" class="app-shell"></div>
+  </div>
+  <div id="tournament-tab-content" class="tab-content">
+    <div id="tournament-root" class="app-shell"></div>
+  </div>
 </div>
 
 <script>
@@ -216,7 +301,27 @@ function validateSetup(input){
 }
 function createInnings(){ return { runs:0, wickets:0, legalBalls:0, events:[] }; }
 function createMatch(setup){
-  return { setup, innings1: createInnings(), innings2: createInnings(), status: 'innings1', winner: undefined, resultText: undefined };
+  return { setup, innings1: createInnings(), innings2: createInnings(), status: 'innings1', winner: undefined, resultText: undefined, historyLogged: false };
+}
+
+// Snapshot of a finished match, permanently logged to matchHistory — plain
+// data only (no ball-by-ball events), since this is a scoreboard log, not a
+// re-editable record. tournamentId/team1Id/team2Id start null; linking a
+// match to a tournament later just fills them in on the same record (see
+// confirmAddToTournament) rather than duplicating the match into a second
+// store — the tournament dashboard is just a filtered, joined view of this
+// same log.
+function buildHistoryRecord(match){
+  const { setup, innings1, innings2, winner, resultText } = match;
+  return {
+    teamA: setup.teamA, teamB: setup.teamB,
+    scoreA: innings1.runs, wicketsA: innings1.wickets, oversA: oversDisplay(innings1.legalBalls),
+    scoreB: innings2.runs, wicketsB: innings2.wickets, oversB: oversDisplay(innings2.legalBalls),
+    winner, resultText,
+    players: setup.players, overs: setup.overs,
+    completedAt: new Date().toISOString(),
+    tournamentId: null, team1Id: null, team2Id: null,
+  };
 }
 
 // ---- Ball model ----
@@ -350,6 +455,18 @@ let state = {
   confirmNewMatch: false,
   composer: null, // { mode:'new' } | { mode:'edit', index }
   composerDraft: null, // { delivery, batRuns, wicket }
+
+  // Tournament tab
+  activeTab: 'match',
+  tournaments: [], // cached list, loaded at init and refreshed after create/delete
+  selectedTournamentId: null,
+  tournamentDialog: null, // 'create' | null
+  confirmDeleteTournamentId: null,
+  // Post-match "Add to Tournament?" prompt, shown once per finished match
+  // when at least one tournament exists.
+  addToTournamentPrompt: null, // { recordId, record } | null
+  addToTournamentTeams: [], // teams belonging to the tournament currently selected in the prompt
+  addToTournamentSelection: { tournamentId: null, team1Id: null, team2Id: null },
 };
 
 // ---- IndexedDB persistence ----
@@ -358,9 +475,19 @@ let state = {
 // match reaches 'complete' (or the user resets/starts a new one), the saved
 // record is deleted — nothing lingers once the match is over.
 const IDB_NAME = 'cricketScoreboardDB';
-const IDB_VERSION = 1;
+const IDB_VERSION = 3;
 const IDB_STORE = 'matchState';
 const IDB_KEY = 'current';
+// Permanent log of finished matches — the source data behind every
+// tournament's standings and match log (see computeStandings/buildTournamentDashboard).
+// Unlike matchState, entries here are never auto-cleared.
+const IDB_HISTORY_STORE = 'matchHistory';
+// Tournaments group teams and (via matchHistory.tournamentId) matches under
+// one points table. Teams reference their tournament by id — the tournament
+// itself does not duplicate a teamIds/matchIds list, so there is exactly one
+// place that can go stale.
+const IDB_TOURNAMENT_STORE = 'tournaments';
+const IDB_TEAM_STORE = 'teams';
 
 function idbOpen(){
   return new Promise((resolve, reject) => {
@@ -369,6 +496,9 @@ function idbOpen(){
     req.onupgradeneeded = () => {
       const db = req.result;
       if(!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
+      if(!db.objectStoreNames.contains(IDB_HISTORY_STORE)) db.createObjectStore(IDB_HISTORY_STORE, { keyPath:'id', autoIncrement:true });
+      if(!db.objectStoreNames.contains(IDB_TOURNAMENT_STORE)) db.createObjectStore(IDB_TOURNAMENT_STORE, { keyPath:'id', autoIncrement:true });
+      if(!db.objectStoreNames.contains(IDB_TEAM_STORE)) db.createObjectStore(IDB_TEAM_STORE, { keyPath:'id', autoIncrement:true });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -411,6 +541,140 @@ async function idbLoadMatch(){
     return record;
   } catch(e){ console.warn('Could not load match from IndexedDB:', e); return null; }
 }
+
+// Returns the generated id so the caller can (optionally, later) link this
+// same record to a tournament via idbUpdateHistoryRecord.
+async function idbAddHistoryMatch(record){
+  try{
+    const db = await idbOpen();
+    const id = await new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_HISTORY_STORE, 'readwrite');
+      const req = tx.objectStore(IDB_HISTORY_STORE).add(record);
+      let newId;
+      req.onsuccess = () => { newId = req.result; };
+      tx.oncomplete = () => resolve(newId);
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+    return id;
+  } catch(e){ console.warn('Could not save match to history:', e); return null; }
+}
+async function idbUpdateHistoryRecord(record){
+  try{
+    const db = await idbOpen();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_HISTORY_STORE, 'readwrite');
+      tx.objectStore(IDB_HISTORY_STORE).put(record);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  } catch(e){ console.warn('Could not update history record:', e); }
+}
+async function idbGetAllHistory(){
+  try{
+    const db = await idbOpen();
+    const list = await new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_HISTORY_STORE, 'readonly');
+      const req = tx.objectStore(IDB_HISTORY_STORE).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+    db.close();
+    return list;
+  } catch(e){ console.warn('Could not load match history:', e); return []; }
+}
+// ---- Tournament / team persistence ----
+async function idbAddTournament(record){
+  try{
+    const db = await idbOpen();
+    const id = await new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_TOURNAMENT_STORE, 'readwrite');
+      const req = tx.objectStore(IDB_TOURNAMENT_STORE).add(record);
+      let newId;
+      req.onsuccess = () => { newId = req.result; };
+      tx.oncomplete = () => resolve(newId);
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+    return id;
+  } catch(e){ console.warn('Could not create tournament:', e); return null; }
+}
+async function idbGetAllTournaments(){
+  try{
+    const db = await idbOpen();
+    const list = await new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_TOURNAMENT_STORE, 'readonly');
+      const req = tx.objectStore(IDB_TOURNAMENT_STORE).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+    db.close();
+    return list;
+  } catch(e){ console.warn('Could not load tournaments:', e); return []; }
+}
+async function idbAddTeam(record){
+  try{
+    const db = await idbOpen();
+    const id = await new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_TEAM_STORE, 'readwrite');
+      const req = tx.objectStore(IDB_TEAM_STORE).add(record);
+      let newId;
+      req.onsuccess = () => { newId = req.result; };
+      tx.oncomplete = () => resolve(newId);
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+    return id;
+  } catch(e){ console.warn('Could not create team:', e); return null; }
+}
+async function idbGetAllTeams(){
+  try{
+    const db = await idbOpen();
+    const list = await new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_TEAM_STORE, 'readonly');
+      const req = tx.objectStore(IDB_TEAM_STORE).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+    db.close();
+    return list;
+  } catch(e){ console.warn('Could not load teams:', e); return []; }
+}
+// Deleting a tournament removes it and its teams, and unlinks (rather than
+// deletes) any matches that were linked to it — they fall back to being
+// plain, unaffiliated entries in Match History instead of disappearing.
+// One transaction across all three stores keeps that atomic.
+async function idbDeleteTournamentCascade(tournamentId){
+  try{
+    const db = await idbOpen();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction([IDB_TOURNAMENT_STORE, IDB_TEAM_STORE, IDB_HISTORY_STORE], 'readwrite');
+      tx.objectStore(IDB_TOURNAMENT_STORE).delete(tournamentId);
+
+      const teamStore = tx.objectStore(IDB_TEAM_STORE);
+      const teamReq = teamStore.getAll();
+      teamReq.onsuccess = () => {
+        teamReq.result.forEach(team => { if(team.tournamentId === tournamentId) teamStore.delete(team.id); });
+      };
+
+      const histStore = tx.objectStore(IDB_HISTORY_STORE);
+      const histReq = histStore.getAll();
+      histReq.onsuccess = () => {
+        histReq.result.forEach(rec => {
+          if(rec.tournamentId === tournamentId){
+            histStore.put({ ...rec, tournamentId:null, team1Id:null, team2Id:null });
+          }
+        });
+      };
+
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  } catch(e){ console.warn('Could not delete tournament:', e); }
+}
+
 // Every render's persistMatchState() call fires its IndexedDB write async
 // and independently — without ordering, a save queued just before "Start
 // New Match" (e.g. from opening the confirm popup, which still saves the
@@ -505,6 +769,113 @@ function deleteComposerBall(){
   const next = deleteBallAt(state.match, state.composer.index);
   state.match = next;
   closeComposer();
+}
+
+// ---- Tournament tab ----
+function setActiveTab(tab){
+  state.activeTab = tab;
+  document.getElementById('tabBtnMatch').classList.toggle('active', tab === 'match');
+  document.getElementById('tabBtnTournament').classList.toggle('active', tab === 'tournament');
+  document.getElementById('match-tab-content').classList.toggle('active', tab === 'match');
+  document.getElementById('tournament-tab-content').classList.toggle('active', tab === 'tournament');
+  if(tab === 'tournament') renderTournamentRoot();
+}
+function openTournament(id){
+  state.selectedTournamentId = id;
+  renderTournamentRoot();
+}
+function openCreateTournamentDialog(){
+  state.tournamentDialog = 'create';
+  renderTournamentRoot();
+}
+function closeCreateTournamentDialog(){
+  state.tournamentDialog = null;
+  renderTournamentRoot();
+}
+async function handleCreateTournament(name, teamNames){
+  const tournamentId = await idbEnqueue(() => idbAddTournament({
+    name, format:'round-robin', winPoints:2, tiePoints:1, createdAt: new Date().toISOString(),
+  }));
+  for(const teamName of teamNames){
+    await idbEnqueue(() => idbAddTeam({ tournamentId, name: teamName, createdAt: new Date().toISOString() }));
+  }
+  state.tournaments = await idbGetAllTournaments();
+  state.tournamentDialog = null;
+  state.selectedTournamentId = tournamentId;
+  renderTournamentRoot();
+}
+async function handleDeleteTournament(id){
+  state.confirmDeleteTournamentId = null;
+  await idbEnqueue(() => idbDeleteTournamentCascade(id));
+  state.tournaments = state.tournaments.filter(t => t.id !== id);
+  if(state.selectedTournamentId === id) state.selectedTournamentId = null;
+  renderTournamentRoot();
+}
+
+// Standings are always recomputed fresh from matchHistory + teams — same
+// "single source of truth, re-sum rather than track deltas" approach as
+// recomputeInnings — so there's nothing to keep in sync when a linked
+// match's score is edited or a team is removed.
+function computeStandings(tournament, teams, matches){
+  const table = {};
+  teams.forEach(t => { table[t.id] = { id:t.id, name:t.name, played:0, wins:0, losses:0, ties:0, runsFor:0, runsAgainst:0, points:0 }; });
+  matches.forEach(m => {
+    const t1 = table[m.team1Id], t2 = table[m.team2Id];
+    if(!t1 || !t2) return; // team since removed, or match not fully linked
+    t1.played++; t2.played++;
+    t1.runsFor += m.scoreA; t1.runsAgainst += m.scoreB;
+    t2.runsFor += m.scoreB; t2.runsAgainst += m.scoreA;
+    if(m.winner === 'TIE'){
+      t1.ties++; t2.ties++;
+      t1.points += tournament.tiePoints; t2.points += tournament.tiePoints;
+    } else if(m.winner === 'A'){
+      t1.wins++; t2.losses++; t1.points += tournament.winPoints;
+    } else {
+      t2.wins++; t1.losses++; t2.points += tournament.winPoints;
+    }
+  });
+  return Object.values(table).sort((a, b) => {
+    if(b.points !== a.points) return b.points - a.points;
+    const rdA = a.runsFor - a.runsAgainst, rdB = b.runsFor - b.runsAgainst;
+    if(rdB !== rdA) return rdB - rdA;
+    return b.runsFor - a.runsFor;
+  });
+}
+
+// ---- Post-match "Add to Tournament?" prompt ----
+function openAddToTournamentDialog(recordId, record){
+  state.addToTournamentPrompt = { recordId, record };
+  state.addToTournamentTeams = [];
+  loadTeamsForAddPrompt(state.tournaments[0].id);
+}
+async function loadTeamsForAddPrompt(tournamentId){
+  const allTeams = await idbGetAllTeams();
+  if(!state.addToTournamentPrompt) return; // dismissed while this was loading
+  const teams = allTeams.filter(t => t.tournamentId === tournamentId);
+  const norm = s => (s || '').trim().toLowerCase();
+  const record = state.addToTournamentPrompt.record;
+  const guess1 = teams.find(t => norm(t.name) === norm(record.teamA));
+  const guess2 = teams.find(t => norm(t.name) === norm(record.teamB));
+  state.addToTournamentTeams = teams;
+  state.addToTournamentSelection = {
+    tournamentId,
+    team1Id: guess1 ? guess1.id : (teams[0] ? teams[0].id : null),
+    team2Id: guess2 ? guess2.id : (teams[1] ? teams[1].id : (teams[0] ? teams[0].id : null)),
+  };
+  render();
+}
+function closeAddToTournamentPrompt(){
+  state.addToTournamentPrompt = null;
+  state.addToTournamentTeams = [];
+  render();
+}
+function confirmAddToTournament(){
+  const { recordId, record } = state.addToTournamentPrompt;
+  const { tournamentId, team1Id, team2Id } = state.addToTournamentSelection;
+  idbEnqueue(() => idbUpdateHistoryRecord({ ...record, id: recordId, tournamentId, team1Id, team2Id }));
+  state.addToTournamentPrompt = null;
+  state.addToTournamentTeams = [];
+  render();
 }
 
 // ---- Rendering (vanilla, no framework) ----
@@ -728,15 +1099,228 @@ function renderResult(match){
 }
 
 function renderConfirm(){
+  return renderConfirmDialog(
+    'Start a new match? Current match data will be cleared.',
+    'Start New Match',
+    ()=>{ state.confirmReset=false; state.confirmNewMatch=false; render(); },
+    resetToSetup,
+  );
+}
+
+// Generic yes/no confirmation dialog, reused for reset/new-match, clearing
+// history, and deleting a single history entry.
+function renderConfirmDialog(text, confirmLabel, onCancel, onConfirm){
   return el('div', {class:'confirm-overlay', role:'dialog', 'aria-modal':'true'},
     el('div', {class:'confirm-card'},
-      el('p', {class:'confirm-text'}, 'Start a new match? Current match data will be cleared.'),
+      el('p', {class:'confirm-text'}, text),
       el('div', {class:'confirm-actions'},
-        el('button', {type:'button', class:'confirm-cancel', onclick:()=>{ state.confirmReset=false; state.confirmNewMatch=false; render(); }}, 'Cancel'),
-        el('button', {type:'button', class:'confirm-confirm', onclick: resetToSetup}, 'Start New Match'),
+        el('button', {type:'button', class:'confirm-cancel', onclick: onCancel}, 'Cancel'),
+        el('button', {type:'button', class:'confirm-confirm', onclick: onConfirm}, confirmLabel),
       ),
     ),
   );
+}
+
+function formatHistoryDate(iso){
+  try{
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'}) +
+      ' · ' + d.toLocaleTimeString(undefined, {hour:'numeric', minute:'2-digit'});
+  } catch(e){ return ''; }
+}
+
+// ---- Tournament tab rendering ----
+async function buildTournamentHub(){
+  const wrap = el('div', {class:'tournament-hub'},
+    el('h2', {class:'tournament-hub-title'}, '🏆 Tournaments'),
+    el('p', {class:'tournament-hub-subtitle'}, 'Group teams and matches under one points table — link matches to it as you play them and standings update automatically.'),
+  );
+
+  if(state.tournaments.length === 0){
+    wrap.appendChild(el('div', {class:'empty-state'},
+      el('p', {}, 'No tournaments yet.'),
+      el('p', {class:'empty-state-sub'}, 'Create one, add your teams, then link matches to it after each game — win/loss points and run totals build up on their own.'),
+    ));
+  } else {
+    const [allTeams, allMatches] = await Promise.all([idbGetAllTeams(), idbGetAllHistory()]);
+    const list = el('div', {class:'tournament-list'});
+    state.tournaments.forEach(t => {
+      const teamCount = allTeams.filter(x => x.tournamentId === t.id).length;
+      const matchCount = allMatches.filter(m => m.tournamentId === t.id).length;
+      const card = el('div', {class:'tournament-card', tabindex:'0', role:'button', onclick: () => openTournament(t.id)},
+        el('div', {class:'tournament-name'}, t.name),
+        el('div', {class:'tournament-meta'}, teamCount + ' team' + (teamCount === 1 ? '' : 's') + ' · ' + matchCount + ' match' + (matchCount === 1 ? '' : 'es') + ' played'),
+      );
+      attachLongPress(card, () => { state.confirmDeleteTournamentId = t.id; renderTournamentRoot(); });
+      list.appendChild(card);
+    });
+    wrap.appendChild(list);
+    wrap.appendChild(el('p', {class:'tournament-hub-hint'}, 'hold a tournament to delete it'));
+  }
+
+  wrap.appendChild(el('button', {type:'button', class:'btn-new-tournament', onclick: openCreateTournamentDialog}, '+ New Tournament'));
+  return wrap;
+}
+
+function renderStandingsTable(standings){
+  if(standings.length === 0) return el('p', {class:'history-empty'}, 'No teams in this tournament.');
+  const headerRow = el('tr', {},
+    el('th', {}, '#'), el('th', {}, 'Team'), el('th', {}, 'P'), el('th', {}, 'W'),
+    el('th', {}, 'L'), el('th', {}, 'T'), el('th', {}, 'RD'), el('th', {}, 'Pts'),
+  );
+  const rows = standings.map((s, i) => {
+    const rd = s.runsFor - s.runsAgainst;
+    return el('tr', {},
+      el('td', {class:'standings-rank'}, String(i + 1)),
+      el('td', {class:'standings-team'}, s.name),
+      el('td', {class:'standings-number'}, String(s.played)),
+      el('td', {class:'standings-number'}, String(s.wins)),
+      el('td', {class:'standings-number'}, String(s.losses)),
+      el('td', {class:'standings-number'}, String(s.ties)),
+      el('td', {class:'standings-number'}, (rd >= 0 ? '+' : '') + rd),
+      el('td', {class:'standings-number standings-points'}, String(s.points)),
+    );
+  });
+  return el('div', {class:'standings-scroll'},
+    el('table', {class:'standings-table'}, el('thead', {}, headerRow), el('tbody', {}, ...rows)),
+  );
+}
+
+function renderTournamentMatchRow(m){
+  return el('div', {class:'history-entry'},
+    el('div', {class:'history-entry-date'}, formatHistoryDate(m.completedAt)),
+    el('div', {class:'history-entry-row'},
+      el('span', {class:'history-entry-team' + (m.winner === 'A' ? ' winner' : '')}, m.teamA),
+      el('span', {class:'history-entry-score'}, m.scoreA + '/' + m.wicketsA, el('span', {class:'history-entry-overs'}, ' (' + m.oversA + ')')),
+    ),
+    el('div', {class:'history-entry-row'},
+      el('span', {class:'history-entry-team' + (m.winner === 'B' ? ' winner' : '')}, m.teamB),
+      el('span', {class:'history-entry-score'}, m.scoreB + '/' + m.wicketsB, el('span', {class:'history-entry-overs'}, ' (' + m.oversB + ')')),
+    ),
+    el('div', {class:'history-entry-result'}, m.winner === 'TIE' ? '🤝 Match Tied' : '🏆 ' + (m.resultText || '')),
+  );
+}
+
+async function buildTournamentDashboard(tournamentId){
+  const tournament = state.tournaments.find(t => t.id === tournamentId);
+  if(!tournament){ state.selectedTournamentId = null; return await buildTournamentHub(); }
+
+  const [allTeams, allMatches] = await Promise.all([idbGetAllTeams(), idbGetAllHistory()]);
+  const teams = allTeams.filter(t => t.tournamentId === tournamentId);
+  const matches = allMatches.filter(m => m.tournamentId === tournamentId)
+    .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+  const standings = computeStandings(tournament, teams, matches);
+
+  const wrap = el('div', {class:'tournament-dashboard'},
+    el('div', {class:'tournament-dash-header'},
+      el('button', {type:'button', class:'btn-back', onclick: () => openTournament(null)}, '← Back'),
+      el('h2', {class:'tournament-dash-title'}, tournament.name),
+    ),
+    el('p', {class:'tournament-dash-meta'},
+      teams.length + ' team' + (teams.length === 1 ? '' : 's') + ' · ' + matches.length + ' match' + (matches.length === 1 ? '' : 'es') + ' played · '
+      + tournament.winPoints + ' pts win, ' + tournament.tiePoints + ' pts tie'),
+    el('h3', {class:'tournament-section-title'}, 'Standings'),
+    renderStandingsTable(standings),
+    el('h3', {class:'tournament-section-title'}, 'Match Log'),
+  );
+
+  if(matches.length === 0){
+    wrap.appendChild(el('p', {class:'history-empty'}, 'No matches linked yet. Finish a match on the Match tab to link it here.'));
+  } else {
+    wrap.appendChild(el('div', {class:'tournament-match-list'}, ...matches.map(renderTournamentMatchRow)));
+  }
+
+  wrap.appendChild(el('button', {type:'button', class:'btn-delete-tournament', onclick: () => { state.confirmDeleteTournamentId = tournamentId; renderTournamentRoot(); }}, 'Delete Tournament'));
+  return wrap;
+}
+
+function renderCreateTournamentDialog(){
+  const nameInput = el('input', { type:'text', placeholder:'e.g. Sunday League 2026' });
+  const teamsInput = el('textarea', { placeholder:'Mumbai, Delhi, Bangalore, Chennai', rows:'3' });
+
+  function submit(){
+    const name = (nameInput.value || '').trim();
+    const teamNames = (teamsInput.value || '').split(',').map(t => t.trim()).filter(Boolean);
+    if(!name){ nameInput.focus(); return; }
+    if(teamNames.length < 2){ teamsInput.focus(); return; }
+    handleCreateTournament(name, teamNames);
+  }
+  nameInput.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); teamsInput.focus(); } });
+
+  const card = el('div', {class:'composer-card'},
+    el('h2', {class:'composer-title'}, 'New Tournament'),
+    el('p', {class:'composer-sub'}, 'Add teams once, then link matches to it as you play — the points table updates automatically.'),
+    el('div', {class:'composer-section-label'}, 'Tournament name'),
+    el('label', {class:'field'}, nameInput),
+    el('div', {class:'composer-section-label'}, 'Teams (comma-separated, at least 2)'),
+    el('label', {class:'field'}, teamsInput),
+    el('div', {class:'composer-actions'},
+      el('button', {type:'button', class:'composer-cancel', onclick: closeCreateTournamentDialog}, 'Cancel'),
+      el('button', {type:'button', class:'composer-save', onclick: submit}, 'Create Tournament'),
+    ),
+  );
+  return el('div', {class:'composer-overlay', role:'dialog', 'aria-modal':'true'}, card);
+}
+
+function renderAddToTournamentDialog(){
+  const { record } = state.addToTournamentPrompt;
+  const sel = state.addToTournamentSelection;
+  const teams = state.addToTournamentTeams;
+
+  const tournamentSelect = el('select', {class:'field-select', onchange: (e) => loadTeamsForAddPrompt(Number(e.target.value))},
+    ...state.tournaments.map(t => el('option', { value:String(t.id), ...(sel.tournamentId === t.id ? {selected:'selected'} : {}) }, t.name)),
+  );
+  const team1Select = el('select', {class:'field-select', onchange: (e) => { state.addToTournamentSelection.team1Id = e.target.value ? Number(e.target.value) : null; render(); }},
+    ...teams.map(t => el('option', { value:String(t.id), ...(sel.team1Id === t.id ? {selected:'selected'} : {}) }, t.name)),
+  );
+  const team2Select = el('select', {class:'field-select', onchange: (e) => { state.addToTournamentSelection.team2Id = e.target.value ? Number(e.target.value) : null; render(); }},
+    ...teams.map(t => el('option', { value:String(t.id), ...(sel.team2Id === t.id ? {selected:'selected'} : {}) }, t.name)),
+  );
+
+  const canConfirm = teams.length >= 2 && sel.team1Id != null && sel.team2Id != null && sel.team1Id !== sel.team2Id;
+
+  const card = el('div', {class:'composer-card'},
+    el('h2', {class:'composer-title'}, 'Add to Tournament?'),
+    el('p', {class:'composer-sub'},
+      record.teamA + ' ' + record.scoreA + '/' + record.wicketsA + ' vs ' + record.teamB + ' ' + record.scoreB + '/' + record.wicketsB
+      + '. ' + (record.winner === 'TIE' ? 'Match tied.' : record.resultText)),
+    el('div', {class:'composer-section-label'}, 'Tournament'),
+    tournamentSelect,
+    el('div', {class:'composer-section-label'}, record.teamA + ' is'),
+    team1Select,
+    el('div', {class:'composer-section-label'}, record.teamB + ' is'),
+    team2Select,
+    teams.length < 2 ? el('p', {class:'composer-note'}, 'This tournament needs at least 2 teams.') : null,
+    (sel.team1Id != null && sel.team1Id === sel.team2Id) ? el('p', {class:'composer-note'}, 'Pick two different teams.') : null,
+    el('div', {class:'composer-actions'},
+      el('button', {type:'button', class:'composer-cancel', onclick: closeAddToTournamentPrompt}, 'Not Now'),
+      el('button', {type:'button', class:'composer-save', disabled: !canConfirm, onclick: confirmAddToTournament}, 'Add to Tournament'),
+    ),
+  );
+  return el('div', {class:'composer-overlay', role:'dialog', 'aria-modal':'true'}, card);
+}
+
+async function renderTournamentRoot(){
+  const container = document.getElementById('tournament-root');
+  container.innerHTML = '';
+
+  if(!state.selectedTournamentId){
+    container.appendChild(await buildTournamentHub());
+  } else {
+    container.appendChild(await buildTournamentDashboard(state.selectedTournamentId));
+  }
+
+  if(state.tournamentDialog === 'create'){
+    container.appendChild(renderCreateTournamentDialog());
+  }
+  if(state.confirmDeleteTournamentId !== null){
+    container.appendChild(renderConfirmDialog(
+      'Delete this tournament? Its teams will be removed and any linked matches will move back to general Match History.',
+      'Delete Tournament',
+      () => { state.confirmDeleteTournamentId = null; renderTournamentRoot(); },
+      () => handleDeleteTournament(state.confirmDeleteTournamentId),
+    ));
+  }
 }
 
 // ---- Composer (Custom Ball / edit ball) ----
@@ -813,32 +1397,44 @@ function render(){
 
   if(!match){
     root.appendChild(renderSetup());
-    persistMatchState();
-    return;
-  }
+  } else {
+    const { setup, innings1, innings2, status } = match;
 
-  const { setup, innings1, innings2, status } = match;
+    // Log to the permanent Match History board exactly once, the moment a
+    // match finishes — mutated in place (not replaced) so it survives the
+    // spread-copies later updates would otherwise make from this object.
+    // If any tournaments exist, follow up with the "Add to Tournament?"
+    // prompt once the record's generated id comes back.
+    if(status === 'complete' && !match.historyLogged){
+      match.historyLogged = true;
+      const record = buildHistoryRecord(match);
+      idbEnqueue(() => idbAddHistoryMatch(record)).then(newId => {
+        if(state.match !== match || newId == null) return; // moved on before this resolved
+        if(state.tournaments.length > 0) openAddToTournamentDialog(newId, record);
+      });
+    }
 
-  if(status !== 'complete') root.appendChild(renderHeader());
+    if(status !== 'complete') root.appendChild(renderHeader());
 
-  if(status === 'innings1'){
-    const disabled = !canRecordEvent(match);
-    root.appendChild(renderScoreboard(setup.teamA, innings1, setup, false));
-    root.appendChild(renderRunButtons(disabled));
-    root.appendChild(renderEventButtons(disabled));
-    root.appendChild(renderSecondaryRow(disabled));
-    root.appendChild(renderHistory(innings1.events));
-  } else if(status === 'innings1-complete'){
-    root.appendChild(renderInningsSummary(setup, innings1));
-  } else if(status === 'innings2'){
-    const disabled = !canRecordEvent(match);
-    root.appendChild(renderScoreboard(setup.teamB, innings2, setup, true, innings1.runs));
-    root.appendChild(renderRunButtons(disabled));
-    root.appendChild(renderEventButtons(disabled));
-    root.appendChild(renderSecondaryRow(disabled));
-    root.appendChild(renderHistory(innings2.events));
-  } else if(status === 'complete'){
-    root.appendChild(renderResult(match));
+    if(status === 'innings1'){
+      const disabled = !canRecordEvent(match);
+      root.appendChild(renderScoreboard(setup.teamA, innings1, setup, false));
+      root.appendChild(renderRunButtons(disabled));
+      root.appendChild(renderEventButtons(disabled));
+      root.appendChild(renderSecondaryRow(disabled));
+      root.appendChild(renderHistory(innings1.events));
+    } else if(status === 'innings1-complete'){
+      root.appendChild(renderInningsSummary(setup, innings1));
+    } else if(status === 'innings2'){
+      const disabled = !canRecordEvent(match);
+      root.appendChild(renderScoreboard(setup.teamB, innings2, setup, true, innings1.runs));
+      root.appendChild(renderRunButtons(disabled));
+      root.appendChild(renderEventButtons(disabled));
+      root.appendChild(renderSecondaryRow(disabled));
+      root.appendChild(renderHistory(innings2.events));
+    } else if(status === 'complete'){
+      root.appendChild(renderResult(match));
+    }
   }
 
   if(state.confirmReset || state.confirmNewMatch){
@@ -846,6 +1442,9 @@ function render(){
   }
   if(state.composer){
     root.appendChild(renderComposer());
+  }
+  if(state.addToTournamentPrompt){
+    root.appendChild(renderAddToTournamentDialog());
   }
 
   persistMatchState();
@@ -856,11 +1455,14 @@ function render(){
 // that had already finished is never restored (it would already have been
 // cleared, but this is a safety net for older/partial records too).
 (async function init(){
-  const saved = await idbLoadMatch();
+  const [saved, tournaments] = await Promise.all([idbLoadMatch(), idbGetAllTournaments()]);
+  state.tournaments = tournaments;
   if(saved && saved.match && saved.match.status !== 'complete'){
     state.match = saved.match;
     state.undoStack = Array.isArray(saved.undoStack) ? saved.undoStack : [];
   }
+  document.getElementById('tabBtnMatch').addEventListener('click', () => setActiveTab('match'));
+  document.getElementById('tabBtnTournament').addEventListener('click', () => setActiveTab('tournament'));
   render();
 })();
 </script>
