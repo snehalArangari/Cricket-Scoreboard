@@ -17,6 +17,8 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // Bind all interfaces so the dev server is reachable from a phone on the LAN.
+    host: true,
     // shared/ lives outside client/, so Vite needs explicit permission to read it
     fs: { allow: [rootDir] },
     proxy: {
