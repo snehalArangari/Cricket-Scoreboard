@@ -8,6 +8,7 @@ import {
   deriveMatchState,
   deriveNextUp,
   groupIntoOvers,
+  nextBatterPositions,
   oversDisplay,
   recomputeInnings,
   startSecondInnings,
@@ -358,6 +359,78 @@ check('oversDisplay 6 legal balls', oversDisplay(6), '1.0');
   const before = deriveMatchState(m).innings2.events.length;
   m = applyBall(m, b); // same id, now in the other innings
   check('idempotency · spans both innings', deriveMatchState(m).innings2.events.length, before);
+}
+
+// ---- 22. an EXPLICITLY chosen incoming batter takes the right end ----
+// The scorer picks who walks in; the app must not guess from squad order.
+{
+  // Striker out mid-over — the new batter is on strike.
+  const p1 = nextBatterPositions(
+    'a1',
+    'a2',
+    ball({ wicket: { outBatterId: 'a1', creditBowler: true } }),
+    false,
+    'a4',
+  );
+  check('incoming · replaces the striker', p1.strikerId, 'a4');
+  check('incoming · non-striker untouched', p1.nonStrikerId, 'a2');
+
+  // Non-striker run out — the new batter takes the NON-striker's end.
+  const p2 = nextBatterPositions(
+    'a1',
+    'a2',
+    ball({ wicket: { outBatterId: 'a2', creditBowler: false } }),
+    false,
+    'a4',
+  );
+  check('incoming · run-out of the non-striker keeps strike', p2.strikerId, 'a1');
+  check('incoming · new batter at the non-striker end', p2.nonStrikerId, 'a4');
+
+  // Wicket on the last ball of an over — the over swap applies AFTER the
+  // substitution, so the new batter starts the next over off strike.
+  const p3 = nextBatterPositions(
+    'a1',
+    'a2',
+    ball({ wicket: { outBatterId: 'a1', creditBowler: true } }),
+    true,
+    'a4',
+  );
+  check('incoming · over-end swap puts the new batter off strike', p3.strikerId, 'a2');
+  check('incoming · new batter at the far end', p3.nonStrikerId, 'a4');
+
+  // Run out completing an odd run: the batters cross FIRST, then the incoming
+  // batter fills whichever end the dismissed batter ended up at.
+  const p4 = nextBatterPositions(
+    'a1',
+    'a2',
+    ball({ batRuns: 1, wicket: { outBatterId: 'a1', creditBowler: false } }),
+    false,
+    'a4',
+  );
+  check('incoming · crossed before the run-out', p4.strikerId, 'a2');
+  check('incoming · fills the vacated end', p4.nonStrikerId, 'a4');
+
+  // With no incoming batter supplied the dismissed batter is left in place —
+  // which is exactly why the UI must gate scoring until one is chosen.
+  const p5 = nextBatterPositions(
+    'a1',
+    'a2',
+    ball({ wicket: { outBatterId: 'a1', creditBowler: true } }),
+    false,
+    null,
+  );
+  check('incoming · absent leaves the vacancy visible', p5.strikerId, 'a1');
+}
+
+// ---- 23. openers are whoever the scorer names, not squad order ----
+{
+  let m: MatchCore = createMatch('test', setup);
+  // Scorer opens with a3 and a4 rather than the first two in the list.
+  m = applyBall(m, ball({ strikerId: 'a3', nonStrikerId: 'a4', batRuns: 2 }));
+  const i = deriveMatchState(m).innings1;
+  check('openers · chosen striker credited', i.batting.find((c) => c.playerId === 'a3')?.runs, 2);
+  check('openers · squad-order player untouched', i.batting.find((c) => c.playerId === 'a1')?.batted, false);
+  check('openers · chosen non-striker marked in', i.batting.find((c) => c.playerId === 'a4')?.batted, true);
 }
 
 // ---- report ----

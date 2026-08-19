@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import type { Ball, Delivery, Player } from '@shared/types';
-import { oversDisplay } from '@shared/engine';
+import { groupIntoOvers, isLegalDelivery, nextBatterPositions, oversDisplay } from '@shared/engine';
 import { useMatch } from '../hooks/useMatch';
 import { loadScorerToken } from '../lib/api';
 import { Btn, ConnectionBar, Panel, Screen, Toast } from '../components/ui';
@@ -9,6 +9,7 @@ import { ScoreHero, ThisOver, activeInnings } from '../components/Scoreboard';
 import { Scorecards } from '../components/Cards';
 import BallComposer, { type ComposerDraft } from '../components/BallComposer';
 import PlayerPicker from '../components/PlayerPicker';
+import { NewBatterGate, NewBowlerGate, OpeningGate } from '../components/InningsGate';
 
 const EMPTY_DRAFT: ComposerDraft = { delivery: 'NORMAL', batRuns: 0, wicket: null };
 
@@ -31,44 +32,93 @@ export default function Scorer() {
     startInnings2,
   } = useMatch(matchId, token);
 
-  const [bowlerId, setBowlerId] = useState<string | null>(null);
-  const [picker, setPicker] = useState<'bowler' | 'striker' | 'nonStriker' | null>(null);
+  // Who is on the field is CHOSEN, not guessed. Openers are picked before the
+  // first ball, a new batter after each wicket, and a new bowler each over.
+  const [openers, setOpeners] = useState<{ strikerId: string; nonStrikerId: string } | null>(null);
+  const [bowlerChoice, setBowlerChoice] = useState<{ overIndex: number; id: string } | null>(null);
+  const [incoming, setIncoming] = useState<{ afterBallId: string; id: string } | null>(null);
+  const [swapped, setSwapped] = useState(false);
+
+  const [picker, setPicker] = useState<'bowler' | null>(null);
   const [composer, setComposer] = useState<{ mode: 'new' | 'edit'; index?: number } | null>(null);
   const [draft, setDraft] = useState<ComposerDraft>(EMPTY_DRAFT);
   const [copied, setCopied] = useState(false);
-  // The engine derives who is at the crease from the last ball and auto-picks the
-  // next batter in squad order. This lets the scorer override that for the NEXT
-  // delivery — choosing a different incoming batter, or fixing who took strike.
-  const [override, setOverride] = useState<{ strikerId?: string; nonStrikerId?: string }>({});
-  const lastOverFlag = useRef(false);
 
   const view = state ? activeInnings(state) : null;
   const innings = view?.innings;
   const battingTeam = view?.battingTeam;
   const bowlingTeam = view?.bowlingTeam;
+  const inningsKey = view?.key;
 
-  const byId = (team: Player[] | undefined, id: string | null | undefined) =>
-    team?.find((p) => p.id === id);
-  const striker = byId(battingTeam?.players, override.strikerId ?? innings?.strikerId);
-  const nonStriker = byId(battingTeam?.players, override.nonStrikerId ?? innings?.nonStrikerId);
-  const bowler = byId(bowlingTeam?.players, bowlerId) ?? byId(bowlingTeam?.players, innings?.lastBowlerId);
-
-  // Default the bowler once the match loads.
+  // Each innings starts fresh — new openers, new bowler.
   useEffect(() => {
-    if (!bowlingTeam) return;
-    if (bowlerId && bowlingTeam.players.some((p) => p.id === bowlerId)) return;
-    setBowlerId(innings?.lastBowlerId ?? bowlingTeam.players[0]?.id ?? null);
-  }, [bowlingTeam, bowlerId, innings?.lastBowlerId]);
+    setOpeners(null);
+    setBowlerChoice(null);
+    setIncoming(null);
+    setSwapped(false);
+  }, [inningsKey]);
 
-  // Prompt for a new bowler when an over completes — but never block on it.
-  useEffect(() => {
-    const need = innings?.needNewBowler ?? false;
-    if (need && !lastOverFlag.current && state?.status !== 'complete') setPicker('bowler');
-    lastOverFlag.current = need;
-  }, [innings?.needNewBowler, state?.status]);
-
+  const events = innings?.events ?? [];
+  const legalBalls = innings?.legalBalls ?? 0;
+  const overIndex = Math.floor(legalBalls / 6); // the over now being bowled, 0-based
+  const lastBall = events.length > 0 ? events[events.length - 1] : null;
   const live = state?.status === 'innings1' || state?.status === 'innings2';
-  const canScore = Boolean(live && striker && nonStriker && bowler);
+
+  // If the current over is already under way, the bowler is recoverable from the
+  // ball log — so a page refresh mid-over does not re-ask.
+  const overGroups = groupIntoOvers(events);
+  const lastGroup = overGroups.length > 0 ? overGroups[overGroups.length - 1] : [];
+  const lastGroupComplete = lastGroup.filter((b) => isLegalDelivery(b.delivery)).length === 6;
+  const currentOverBalls = lastGroupComplete ? [] : lastGroup;
+  const bowlerFromLog = currentOverBalls.find((b) => b.delivery !== 'DEAD_BALL')?.bowlerId ?? null;
+  const bowlerId =
+    bowlerChoice?.overIndex === overIndex ? bowlerChoice.id : bowlerFromLog;
+
+  // The batter chosen to replace the one dismissed by the most recent ball.
+  const incomingId = lastBall && incoming?.afterBallId === lastBall.id ? incoming.id : null;
+
+  // Anyone who has not yet been to the crease.
+  const seen = new Set<string>();
+  for (const b of events) {
+    if (b.delivery === 'DEAD_BALL') continue;
+    seen.add(b.strikerId);
+    seen.add(b.nonStrikerId);
+  }
+  const availableBatters = (battingTeam?.players ?? []).filter((p) => !seen.has(p.id));
+
+  // Positions for the next delivery.
+  let strikerId: string | null = null;
+  let nonStrikerId: string | null = null;
+  if (events.length === 0) {
+    strikerId = openers?.strikerId ?? null;
+    nonStrikerId = openers?.nonStrikerId ?? null;
+  } else if (lastBall) {
+    const pos = nextBatterPositions(
+      lastBall.strikerId,
+      lastBall.nonStrikerId,
+      lastBall,
+      legalBalls > 0 && legalBalls % 6 === 0,
+      incomingId,
+    );
+    strikerId = pos.strikerId;
+    nonStrikerId = pos.nonStrikerId;
+  }
+  if (swapped) [strikerId, nonStrikerId] = [nonStrikerId, strikerId];
+
+  const byId = (team: Player[] | undefined, id: string | null) =>
+    id ? team?.find((p) => p.id === id) : undefined;
+  const striker = byId(battingTeam?.players, strikerId);
+  const nonStriker = byId(battingTeam?.players, nonStrikerId);
+  const bowler = byId(bowlingTeam?.players, bowlerId);
+
+  // ---- The gates. Scoring is blocked until each is answered. ----
+  const needOpeners = Boolean(live && events.length === 0 && !openers);
+  const needNewBatter = Boolean(
+    live && !needOpeners && lastBall?.wicket && !incomingId && availableBatters.length > 0,
+  );
+  const needNewBowler = Boolean(live && !needOpeners && !needNewBatter && !bowlerId);
+  const gated = needOpeners || needNewBatter || needNewBowler;
+  const canScore = Boolean(live && !gated && striker && nonStriker && bowler);
 
   function record(delivery: Delivery, batRuns: number, wicket: Ball['wicket'] = null) {
     if (!canScore || !striker || !nonStriker || !bowler) return;
@@ -80,9 +130,7 @@ export default function Scorer() {
       bowlerId: bowler.id,
       wicket,
     });
-    // The override applies to one delivery only — after that the engine's own
-    // rotation takes over again.
-    setOverride({});
+    setSwapped(false);
   }
 
   function openComposer(mode: 'new' | 'edit', index?: number) {
@@ -125,7 +173,6 @@ export default function Scorer() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Clipboard needs a secure context; show the URL so it can be copied by hand.
       window.prompt('Copy this link:', url);
     }
   }
@@ -146,7 +193,7 @@ export default function Scorer() {
     );
   }
 
-  if (!state) {
+  if (!state || !view || !innings || !battingTeam || !bowlingTeam) {
     return (
       <Screen>
         <div className="mx-auto max-w-md px-4 py-20 text-center">
@@ -162,6 +209,10 @@ export default function Scorer() {
   }
 
   const readOnly = role !== 'scorer';
+  const outName =
+    lastBall?.wicket
+      ? battingTeam.players.find((p) => p.id === lastBall.wicket!.outBatterId)?.name ?? 'The batter'
+      : '';
 
   return (
     <Screen>
@@ -176,28 +227,73 @@ export default function Scorer() {
 
         <ScoreHero state={state} />
 
-        {/* On-field */}
-        {live && (
-          <div className="grid grid-cols-3 gap-1.5 px-4 py-3">
-            <OnFieldPill
-              label="Striker"
-              name={striker?.name ?? '—'}
-              detail={statLine(innings, striker?.id)}
-              accent
-              onClick={readOnly ? undefined : () => setPicker('striker')}
-            />
-            <OnFieldPill
-              label="Non-striker"
-              name={nonStriker?.name ?? '—'}
-              detail={statLine(innings, nonStriker?.id)}
-              onClick={readOnly ? undefined : () => setPicker('nonStriker')}
-            />
-            <OnFieldPill
-              label="Bowler"
-              name={bowler?.name ?? '—'}
-              detail={bowlLine(innings, bowler?.id)}
-              onClick={readOnly ? undefined : () => setPicker('bowler')}
-            />
+        {/* ---- Gates ---- */}
+        {!readOnly && needOpeners && (
+          <OpeningGate
+            teamName={battingTeam.name}
+            batters={battingTeam.players}
+            bowlers={bowlingTeam.players}
+            innings={innings}
+            onConfirm={({ strikerId: s, nonStrikerId: ns, bowlerId: b }) => {
+              setOpeners({ strikerId: s, nonStrikerId: ns });
+              setBowlerChoice({ overIndex: 0, id: b });
+            }}
+          />
+        )}
+
+        {!readOnly && needNewBatter && (
+          <NewBatterGate
+            outName={outName}
+            available={availableBatters}
+            innings={innings}
+            onConfirm={(id) => setIncoming({ afterBallId: lastBall!.id, id })}
+          />
+        )}
+
+        {!readOnly && needNewBowler && (
+          <NewBowlerGate
+            overNumber={overIndex + 1}
+            bowlers={bowlingTeam.players}
+            previousBowlerId={innings.lastBowlerId}
+            innings={innings}
+            onConfirm={(id) => setBowlerChoice({ overIndex, id })}
+          />
+        )}
+
+        {/* ---- On field ---- */}
+        {live && !gated && (
+          <div className="px-4 py-3">
+            <div className="grid grid-cols-3 gap-1.5">
+              <OnFieldPill
+                label="Striker"
+                name={striker?.name ?? '—'}
+                detail={batLine(innings, striker?.id)}
+                accent
+              />
+              <OnFieldPill
+                label="Non-striker"
+                name={nonStriker?.name ?? '—'}
+                detail={batLine(innings, nonStriker?.id)}
+              />
+              <OnFieldPill
+                label="Bowler"
+                name={bowler?.name ?? '—'}
+                detail={bowlLine(innings, bowler?.id)}
+                onClick={readOnly ? undefined : () => setPicker('bowler')}
+              />
+            </div>
+            {!readOnly && (
+              <button
+                onClick={() => setSwapped((s) => !s)}
+                className={`pressable mt-1.5 w-full rounded-lg border py-1.5 text-[11px] ${
+                  swapped
+                    ? 'border-accent/50 bg-accent/12 text-accent'
+                    : 'border-pitch-700 bg-pitch-850 text-ink-500'
+                }`}
+              >
+                ⇄ Swap strike {swapped && '(applied to next ball)'}
+              </button>
+            )}
           </div>
         )}
 
@@ -219,7 +315,7 @@ export default function Scorer() {
                   key={n}
                   disabled={!canScore}
                   onClick={() => record('NORMAL', n)}
-                  className={`pressable rounded-xl border py-5 font-display text-3xl font-extrabold tnum disabled:opacity-30 ${
+                  className={`pressable rounded-xl border py-5 font-display text-3xl font-extrabold tnum disabled:opacity-25 ${
                     n === 4 || n === 6
                       ? 'border-accent/50 bg-accent/12 text-accent'
                       : 'border-pitch-600 bg-pitch-800 text-ink-50'
@@ -231,14 +327,19 @@ export default function Scorer() {
             </div>
 
             <div className="mb-2 grid grid-cols-4 gap-2">
-              <PadBtn label="Wicket" tone="live" disabled={!canScore} onClick={() => {
-                setDraft({
-                  delivery: 'NORMAL',
-                  batRuns: 0,
-                  wicket: { outBatterId: striker?.id ?? '', creditBowler: true },
-                });
-                setComposer({ mode: 'new' });
-              }} />
+              <PadBtn
+                label="Wicket"
+                tone="live"
+                disabled={!canScore}
+                onClick={() => {
+                  setDraft({
+                    delivery: 'NORMAL',
+                    batRuns: 0,
+                    wicket: { outBatterId: striker?.id ?? '', creditBowler: true },
+                  });
+                  setComposer({ mode: 'new' });
+                }}
+              />
               <PadBtn label="Wide" tone="extra" disabled={!canScore} onClick={() => record('WIDE', 0)} />
               <PadBtn label="No ball" tone="extra" disabled={!canScore} onClick={() => record('NO_BALL', 0)} />
               <PadBtn label="Dead" tone="mute" disabled={!canScore} onClick={() => record('DEAD_BALL', 0)} />
@@ -255,19 +356,12 @@ export default function Scorer() {
           </div>
         )}
 
-        {/* This over */}
-        {innings && (
-          <div className="mt-4 px-4">
-            <Panel title="This over">
-              <ThisOver
-                innings={innings}
-                onEdit={readOnly ? undefined : (i) => openComposer('edit', i)}
-              />
-            </Panel>
-          </div>
-        )}
+        <div className="mt-4 px-4">
+          <Panel title="This over">
+            <ThisOver innings={innings} onEdit={readOnly ? undefined : (i) => openComposer('edit', i)} />
+          </Panel>
+        </div>
 
-        {/* Share */}
         <div className="mt-3 px-4">
           <Btn variant="default" className="w-full" onClick={share}>
             {copied ? '✓ Link copied' : '⤴ Share live link'}
@@ -277,18 +371,14 @@ export default function Scorer() {
           </p>
         </div>
 
-        {/* Cards */}
-        {view && battingTeam && bowlingTeam && (
-          <div className="mt-4 px-4">
-            <Scorecards
-              innings={view.innings}
-              battingLabel={battingTeam.name}
-              bowlingLabel={bowlingTeam.name}
-            />
-          </div>
-        )}
+        <div className="mt-4 px-4">
+          <Scorecards
+            innings={innings}
+            battingLabel={battingTeam.name}
+            bowlingLabel={bowlingTeam.name}
+          />
+        </div>
 
-        {/* First innings card once the chase is on */}
         {(state.status === 'innings2' || state.status === 'complete') && (
           <div className="mt-3 px-4">
             <Scorecards
@@ -309,7 +399,7 @@ export default function Scorer() {
           mode={composer.mode}
           onSave={saveComposer}
           onDelete={
-            composer.mode === 'edit' && composer.index !== undefined && view
+            composer.mode === 'edit' && composer.index !== undefined
               ? () => {
                   deleteBall(view.key, composer.index!);
                   setComposer(null);
@@ -320,35 +410,13 @@ export default function Scorer() {
         />
       )}
 
-      {picker === 'bowler' && bowlingTeam && (
+      {picker === 'bowler' && (
         <PlayerPicker
-          title="Who is bowling?"
+          title="Change the bowler"
           players={bowlingTeam.players}
           selectedId={bowlerId}
-          noteFor={(p) => (p.id === innings?.lastBowlerId ? 'bowled last over' : undefined)}
-          onPick={setBowlerId}
-          onClose={() => setPicker(null)}
-        />
-      )}
-
-      {(picker === 'striker' || picker === 'nonStriker') && battingTeam && innings && (
-        <PlayerPicker
-          title={picker === 'striker' ? 'Who is on strike?' : 'Who is at the other end?'}
-          players={battingTeam.players}
-          selectedId={picker === 'striker' ? striker?.id : nonStriker?.id}
-          disabledIds={[
-            ...innings.batting.filter((c) => c.out).map((c) => c.playerId),
-            (picker === 'striker' ? nonStriker?.id : striker?.id) ?? '',
-          ].filter(Boolean)}
-          noteFor={(p) => {
-            const c = innings.batting.find((x) => x.playerId === p.id);
-            return c?.batted ? `${c.runs} (${c.balls})` : 'yet to bat';
-          }}
-          onPick={(id) =>
-            setOverride((prev) =>
-              picker === 'striker' ? { ...prev, strikerId: id } : { ...prev, nonStrikerId: id },
-            )
-          }
+          noteFor={(p) => (p.id === innings.lastBowlerId ? 'bowled last over' : bowlLine(innings, p.id))}
+          onPick={(id) => setBowlerChoice({ overIndex, id })}
           onClose={() => setPicker(null)}
         />
       )}
@@ -358,15 +426,14 @@ export default function Scorer() {
   );
 }
 
-function statLine(innings: ReturnType<typeof activeInnings>['innings'] | undefined, id?: string) {
-  const card = innings?.batting.find((c) => c.playerId === id);
-  if (!card) return '';
-  return `${card.runs} (${card.balls})`;
+function batLine(innings: ReturnType<typeof activeInnings>['innings'], id?: string) {
+  const card = innings.batting.find((c) => c.playerId === id);
+  return card ? `${card.runs} (${card.balls})` : '';
 }
 
-function bowlLine(innings: ReturnType<typeof activeInnings>['innings'] | undefined, id?: string) {
-  const card = innings?.bowling.find((c) => c.playerId === id);
-  if (!card) return '';
+function bowlLine(innings: ReturnType<typeof activeInnings>['innings'], id?: string) {
+  const card = innings.bowling.find((c) => c.playerId === id);
+  if (!card || !card.bowled) return '';
   return `${oversDisplay(card.legalBalls)}-${card.maidens}-${card.runs}-${card.wickets}`;
 }
 
@@ -418,10 +485,9 @@ function PadBtn({
     <button
       disabled={disabled}
       onClick={onClick}
-      className={`pressable rounded-xl border py-3.5 text-xs font-bold tracking-wide uppercase disabled:opacity-30 ${tones[tone]}`}
+      className={`pressable rounded-xl border py-3.5 text-xs font-bold tracking-wide uppercase disabled:opacity-25 ${tones[tone]}`}
     >
       {label}
     </button>
   );
 }
-
