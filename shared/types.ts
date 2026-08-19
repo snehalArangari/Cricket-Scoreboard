@@ -59,10 +59,23 @@ export interface Ball {
   wicket: Wicket | null;
 }
 
+export type TossDecision = 'BAT' | 'BOWL';
+
+export interface Toss {
+  /** Which side of the ORDERED setup won it. Because the winner's decision
+   *  determines where they end up, this is 'A' when they chose to bat and 'B'
+   *  when they chose to bowl. */
+  wonBy: 'A' | 'B';
+  decision: TossDecision;
+}
+
 export interface Setup {
   overs: number;
-  teamA: Team; // bats first
+  /** teamA ALWAYS bats first. The toss decides which side that is, so the teams
+   *  are ordered at creation and the engine never needs to consult the toss. */
+  teamA: Team;
   teamB: Team;
+  toss: Toss | null;
 }
 
 export interface BattingCard {

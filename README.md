@@ -31,8 +31,16 @@ derived the same way, so undoing the ball that ended a match correctly reopens i
 - Undo, plus edit or delete any ball in the current over
 - Overs are stored as integer legal-ball counts, never decimals (14.3, not 14.5)
 
+**Match setup**
+- Toss: who won it and whether they chose to bat or bowl — this decides the
+  batting order, so it is required before the first ball
+- A rematch at the end reuses both squads and the over count, optionally with
+  the sides swapped
+
 **Players**
 - Named squads per team; every ball records striker, non-striker and bowler
+- The opening pair and opening bowler are chosen explicitly, never assumed from
+  squad order; a new batter is picked on each wicket and a new bowler each over
 - Automatic strike rotation — odd runs, end of over, and a new batter taking the
   dismissed batter's end
 - Batting card: runs, balls, 4s, 6s, strike rate
@@ -40,6 +48,8 @@ derived the same way, so undoing the ball that ended a match correctly reopens i
 
 **Live**
 - Share one link; unlimited read-only viewers
+- The creator can invite named co-scorers, each with their own link, and remove
+  any of them at any time — only the creator can do either
 - Viewers joining mid-innings or after the match ends get full state immediately
 - Server is authoritative; the scorer applies optimistically so taps never wait
   on the network

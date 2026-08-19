@@ -1,5 +1,5 @@
 import type { DerivedInnings, MatchState, Team } from '@shared/types';
-import { oversDisplay } from '@shared/engine';
+import { oversDisplay, tossSummary } from '@shared/engine';
 import { BallChip } from './ui';
 
 /** Which innings the scoreboard should be showing right now. */
@@ -56,9 +56,11 @@ export function ScoreHero({ state, big = false }: { state: MatchState; big?: boo
   const scoreSize = big
     ? 'text-[clamp(3.5rem,17vw,9rem)]'
     : 'text-[clamp(3rem,14vw,5.5rem)]';
+  const toss = tossSummary(state.setup);
 
   return (
     <div className="hero-wash border-b border-pitch-700 px-5 pt-4 pb-5">
+      {toss && <div className="mb-1.5 text-[11px] text-ink-500">{toss}</div>}
       <div className="mb-2 flex items-center justify-between">
         <span className="font-display text-sm font-bold tracking-[0.12em] text-ink-300 uppercase">
           {battingTeam.name}

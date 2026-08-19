@@ -4,6 +4,9 @@ export interface CreateMatchInput {
   teamBName: string;
   teamAPlayers: string[];
   teamBPlayers: string[];
+  /** Which team AS TYPED won the toss; the server orders the sides from this. */
+  tossWinner?: 'A' | 'B' | null;
+  tossDecision?: 'BAT' | 'BOWL' | null;
 }
 
 export interface CreateMatchResult {

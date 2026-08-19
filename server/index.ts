@@ -81,6 +81,9 @@ app.post('/api/matches', async (req, res) => {
       teamBName: String(body.teamBName ?? ''),
       teamAPlayers: Array.isArray(body.teamAPlayers) ? body.teamAPlayers.map(String) : [],
       teamBPlayers: Array.isArray(body.teamBPlayers) ? body.teamBPlayers.map(String) : [],
+      tossWinner: body.tossWinner === 'A' || body.tossWinner === 'B' ? body.tossWinner : null,
+      tossDecision:
+        body.tossDecision === 'BAT' || body.tossDecision === 'BOWL' ? body.tossDecision : null,
     });
 
     // Retry on the astronomically unlikely id collision rather than 500.

@@ -12,6 +12,7 @@ import {
   oversDisplay,
   recomputeInnings,
   startSecondInnings,
+  tossSummary,
   undoLastBall,
   validateSetup,
 } from './engine';
@@ -431,6 +432,90 @@ check('oversDisplay 6 legal balls', oversDisplay(6), '1.0');
   check('openers · chosen striker credited', i.batting.find((c) => c.playerId === 'a3')?.runs, 2);
   check('openers · squad-order player untouched', i.batting.find((c) => c.playerId === 'a1')?.batted, false);
   check('openers · chosen non-striker marked in', i.batting.find((c) => c.playerId === 'a4')?.batted, true);
+}
+
+// ---- 24. the toss decides who bats first ----
+// All four combinations, because getting one backwards silently swaps an entire
+// match's scorecard and nothing else would catch it.
+{
+  const build = (winner: 'A' | 'B', decision: 'BAT' | 'BOWL') =>
+    validateSetup({
+      overs: 10,
+      teamAName: 'Mumbai',
+      teamBName: 'Chennai',
+      teamAPlayers: ['m1', 'm2'],
+      teamBPlayers: ['c1', 'c2'],
+      tossWinner: winner,
+      tossDecision: decision,
+    });
+
+  const aBat = build('A', 'BAT');
+  check('toss · Mumbai win and bat -> Mumbai first', aBat.teamA.name, 'Mumbai');
+  check('toss · squads travel with the team', aBat.teamA.players[0].name, 'm1');
+  check('toss · winner recorded as A when they bat', aBat.toss?.wonBy, 'A');
+  check('toss · summary reads correctly', tossSummary(aBat), 'Mumbai won the toss and chose to bat');
+
+  const aBowl = build('A', 'BOWL');
+  check('toss · Mumbai win and bowl -> Chennai first', aBowl.teamA.name, 'Chennai');
+  check('toss · Chennai squad moved into slot A', aBowl.teamA.players[0].name, 'c1');
+  check('toss · winner recorded as B when they bowl', aBowl.toss?.wonBy, 'B');
+  check(
+    'toss · summary still names the winner',
+    tossSummary(aBowl),
+    'Mumbai won the toss and chose to bowl',
+  );
+
+  const bBat = build('B', 'BAT');
+  check('toss · Chennai win and bat -> Chennai first', bBat.teamA.name, 'Chennai');
+  check('toss · summary names Chennai', tossSummary(bBat), 'Chennai won the toss and chose to bat');
+
+  const bBowl = build('B', 'BOWL');
+  check('toss · Chennai win and bowl -> Mumbai first', bBowl.teamA.name, 'Mumbai');
+  check(
+    'toss · summary names Chennai bowling',
+    tossSummary(bBowl),
+    'Chennai won the toss and chose to bowl',
+  );
+
+  // Player ids are always a* for the batting-first side, whichever team that is.
+  check('toss · ids follow the slot, not the team', bBowl.teamA.players[0].id, 'a1');
+  check('toss · bowling side gets b ids', bBowl.teamB.players[0].id, 'b1');
+
+  // No toss recorded (a rematch) — the first team typed bats first.
+  const none = validateSetup({
+    overs: 10,
+    teamAName: 'Mumbai',
+    teamBName: 'Chennai',
+    teamAPlayers: ['m1', 'm2'],
+    teamBPlayers: ['c1', 'c2'],
+  });
+  check('toss · absent leaves the typed order', none.teamA.name, 'Mumbai');
+  check('toss · absent records no toss', none.toss, null);
+  check('toss · no summary without a toss', tossSummary(none), null);
+}
+
+// ---- 25. the result names the right side after a toss reorder ----
+{
+  // Chennai win the toss and bowl, so Mumbai bat first and Chennai chase.
+  const s = validateSetup({
+    overs: 1,
+    teamAName: 'Mumbai',
+    teamBName: 'Chennai',
+    teamAPlayers: ['m1', 'm2', 'm3'],
+    teamBPlayers: ['c1', 'c2', 'c3'],
+    tossWinner: 'B',
+    tossDecision: 'BOWL',
+  });
+  let m: MatchCore = createMatch('toss', s);
+  for (let i = 0; i < 6; i++) {
+    m = applyBall(m, ball({ batRuns: 1, strikerId: 'a1', nonStrikerId: 'a2', bowlerId: 'b1' }));
+  }
+  m = startSecondInnings(m);
+  for (let i = 0; i < 6; i++) {
+    m = applyBall(m, ball({ batRuns: 2, strikerId: 'b1', nonStrikerId: 'b2', bowlerId: 'a1' }));
+  }
+  check('toss · chasing side wins', m.status, 'complete');
+  check('toss · result names Chennai, not "Team B"', m.resultText, 'Chennai won by 2 wickets');
 }
 
 // ---- report ----

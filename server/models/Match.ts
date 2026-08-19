@@ -76,8 +76,19 @@ const MatchSchema = new Schema(
     coScorers: { type: [CoScorerSchema], default: [] },
     setup: {
       overs: { type: Number, required: true },
+      // teamA is whoever bats first — the toss is resolved before this is stored.
       teamA: { type: TeamSchema, required: true },
       teamB: { type: TeamSchema, required: true },
+      toss: {
+        type: new Schema(
+          {
+            wonBy: { type: String, enum: ['A', 'B'], required: true },
+            decision: { type: String, enum: ['BAT', 'BOWL'], required: true },
+          },
+          subOpts,
+        ),
+        default: null,
+      },
     },
     innings1: { type: InningsSchema, default: () => ({ events: [] }) },
     innings2: { type: InningsSchema, default: () => ({ events: [] }) },

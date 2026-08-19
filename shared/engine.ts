@@ -17,6 +17,7 @@ import type {
   Player,
   Setup,
   Team,
+  TossDecision,
   Winner,
 } from './types';
 
@@ -511,26 +512,63 @@ export function makePlayers(names: string[], prefix: string): Player[] {
   }));
 }
 
+/**
+ * Builds a Setup from the two teams as the user typed them, then ORDERS them by
+ * the toss so that teamA is always the side batting first.
+ *
+ * Resolving the batting order once, here, is why nothing downstream — not the
+ * fold, not the status derivation, not the result text — ever has to think about
+ * the toss. `teamA bats first` stays an invariant of the whole engine.
+ */
 export function validateSetup(input: {
   overs: number;
   teamAName: string;
   teamBName: string;
   teamAPlayers: string[];
   teamBPlayers: string[];
+  /** Which of the two teams AS TYPED won the toss. */
+  tossWinner?: 'A' | 'B' | null;
+  tossDecision?: TossDecision | null;
 }): Setup {
   const overs = clamp(Math.round(input.overs), MIN_OVERS, MAX_OVERS);
   const trim = (names: string[]) => {
     const cleaned = names.map((n) => n.trim()).filter((n) => n.length > 0);
     return cleaned.slice(0, MAX_PLAYERS);
   };
-  let a = trim(input.teamAPlayers);
-  let b = trim(input.teamBPlayers);
-  while (a.length < MIN_PLAYERS) a.push(`Player ${a.length + 1}`);
-  while (b.length < MIN_PLAYERS) b.push(`Player ${b.length + 1}`);
+  const first = trim(input.teamAPlayers);
+  const second = trim(input.teamBPlayers);
+  while (first.length < MIN_PLAYERS) first.push(`Player ${first.length + 1}`);
+  while (second.length < MIN_PLAYERS) second.push(`Player ${second.length + 1}`);
+
+  const typedA = { name: input.teamAName.trim() || 'Team A', players: first };
+  const typedB = { name: input.teamBName.trim() || 'Team B', players: second };
+
+  // Absent a toss, the first team typed bats first.
+  const winner = input.tossWinner === 'B' ? 'B' : 'A';
+  const decision: TossDecision = input.tossDecision === 'BOWL' ? 'BOWL' : 'BAT';
+  const hasToss = Boolean(input.tossWinner && input.tossDecision);
+
+  // The toss winner bats first if they chose to bat, otherwise the other side does.
+  const winnerBatsFirst = decision === 'BAT';
+  const battingFirstIsTypedA = winner === 'A' ? winnerBatsFirst : !winnerBatsFirst;
+
+  const batFirst = battingFirstIsTypedA ? typedA : typedB;
+  const bowlFirst = battingFirstIsTypedA ? typedB : typedA;
 
   return {
     overs,
-    teamA: { name: input.teamAName.trim() || 'Team A', players: makePlayers(a, 'a') },
-    teamB: { name: input.teamBName.trim() || 'Team B', players: makePlayers(b, 'b') },
+    teamA: { name: batFirst.name, players: makePlayers(batFirst.players, 'a') },
+    teamB: { name: bowlFirst.name, players: makePlayers(bowlFirst.players, 'b') },
+    // After ordering, the winner is 'A' exactly when they chose to bat.
+    toss: hasToss ? { wonBy: winnerBatsFirst ? 'A' : 'B', decision } : null,
   };
+}
+
+/** "Chennai won the toss and chose to bowl" — for display only. */
+export function tossSummary(setup: Setup): string | null {
+  if (!setup.toss) return null;
+  const winner = setup.toss.wonBy === 'A' ? setup.teamA : setup.teamB;
+  return `${winner.name} won the toss and chose to ${
+    setup.toss.decision === 'BAT' ? 'bat' : 'bowl'
+  }`;
 }
