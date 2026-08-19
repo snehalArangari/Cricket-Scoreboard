@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import type { Ball, Delivery, Player } from '@shared/types';
 import { groupIntoOvers, isLegalDelivery, nextBatterPositions, oversDisplay } from '@shared/engine';
 import { useMatch } from '../hooks/useMatch';
-import { loadScorerToken } from '../lib/api';
+import { createMatchRequest, loadScorerToken, saveScorerToken } from '../lib/api';
+import ResultPanel from '../components/ResultPanel';
 import { Btn, ConnectionBar, Panel, Screen, Toast } from '../components/ui';
 import { ScoreHero, ThisOver, activeInnings } from '../components/Scoreboard';
 import { Scorecards } from '../components/Cards';
@@ -15,6 +16,7 @@ const EMPTY_DRAFT: ComposerDraft = { delivery: 'NORMAL', batRuns: 0, wicket: nul
 
 export default function Scorer() {
   const { matchId = '' } = useParams();
+  const navigate = useNavigate();
   const token = useMemo(() => loadScorerToken(matchId), [matchId]);
   const {
     state,
@@ -43,6 +45,8 @@ export default function Scorer() {
   const [composer, setComposer] = useState<{ mode: 'new' | 'edit'; index?: number } | null>(null);
   const [draft, setDraft] = useState<ComposerDraft>(EMPTY_DRAFT);
   const [copied, setCopied] = useState(false);
+  const [rematchBusy, setRematchBusy] = useState(false);
+  const [rematchError, setRematchError] = useState<string | null>(null);
 
   const view = state ? activeInnings(state) : null;
   const innings = view?.innings;
@@ -162,6 +166,31 @@ export default function Scorer() {
     setComposer(null);
   }
 
+  /** Starts a fresh match reusing both squads and the over count. */
+  async function rematch(swapSides: boolean) {
+    if (!state || rematchBusy) return;
+    setRematchBusy(true);
+    setRematchError(null);
+    const { teamA, teamB, overs } = state.setup;
+    // "Swap sides" means whoever chased last time bats first this time.
+    const first = swapSides ? teamB : teamA;
+    const second = swapSides ? teamA : teamB;
+    try {
+      const created = await createMatchRequest({
+        overs,
+        teamAName: first.name,
+        teamBName: second.name,
+        teamAPlayers: first.players.map((p) => p.name),
+        teamBPlayers: second.players.map((p) => p.name),
+      });
+      saveScorerToken(created.matchId, created.scorerToken);
+      navigate(`/score/${created.matchId}`, { replace: false });
+    } catch (err) {
+      setRematchError(err instanceof Error ? err.message : 'Could not start the rematch');
+      setRematchBusy(false);
+    }
+  }
+
   async function share() {
     const url = `${location.origin}/live/${matchId}`;
     try {
@@ -257,6 +286,17 @@ export default function Scorer() {
             previousBowlerId={innings.lastBowlerId}
             innings={innings}
             onConfirm={(id) => setBowlerChoice({ overIndex, id })}
+          />
+        )}
+
+        {/* ---- Result + rematch ---- */}
+        {state.status === 'complete' && !readOnly && (
+          <ResultPanel
+            state={state}
+            busy={rematchBusy}
+            error={rematchError}
+            onRematch={rematch}
+            onNewMatch={() => navigate('/')}
           />
         )}
 
