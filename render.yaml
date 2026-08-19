@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: cricket-live
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    # --include=dev is required: Render sets NODE_ENV=production, which makes npm
+    # prune devDependencies — and vite, tailwind and typescript all live there.
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: MONGODB_URI
+        sync: false # set this in the Render dashboard, never in the repo
+      - key: NODE_VERSION
+        value: '22'
