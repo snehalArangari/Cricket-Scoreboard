@@ -11,7 +11,7 @@ import {
 } from '../lib/api';
 import ResultPanel from '../components/ResultPanel';
 import ScorerManager from '../components/ScorerManager';
-import { Btn, ConnectionBar, Panel, Screen, Toast } from '../components/ui';
+import { Btn, Panel, Screen, StatusBar, Toast } from '../components/ui';
 import { ScoreHero, ThisOver, activeInnings } from '../components/Scoreboard';
 import { Scorecards } from '../components/Cards';
 import BallComposer, { type ComposerDraft } from '../components/BallComposer';
@@ -260,20 +260,9 @@ export default function Scorer() {
 
   return (
     <Screen>
-      <div className="mx-auto w-full max-w-md pb-8">
-        <ConnectionBar conn={conn} pending={pending} />
-
-        {readOnly && (
-          <div className="bg-extra/15 px-4 py-2 text-center text-xs text-extra">
-            Read-only — ask the match creator to invite you as a scorer.
-          </div>
-        )}
-        {role === 'scorer' && (
-          <div className="bg-good/12 px-4 py-2 text-center text-xs text-good">
-            You are scoring as an invited scorer.
-          </div>
-        )}
-
+      {/* pb-16 is constant, so the fixed status bar never covers the last row
+          and never shifts the layout when it appears. */}
+      <div className="mx-auto w-full max-w-md pb-16">
         <ScoreHero state={state} />
 
         {/* ---- Gates ---- */}
@@ -493,6 +482,7 @@ export default function Scorer() {
         />
       )}
 
+      <StatusBar conn={conn} pending={pending} role={role} />
       {notice && <Toast message={notice} onDismiss={dismissNotice} />}
     </Screen>
   );

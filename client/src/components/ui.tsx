@@ -122,27 +122,67 @@ export function BallChip({ ball, onClick }: { ball: Ball; onClick?: () => void }
   );
 }
 
-export function ConnectionBar({ conn, pending }: { conn: string; pending: number }) {
-  if (conn === 'online' && pending === 0) return null;
+/**
+ * Fixed to the bottom, deliberately.
+ *
+ * These messages appear and disappear as the connection changes. In the normal
+ * document flow that reflows everything below them, so the scoreboard jumps
+ * down and back up mid-over — precisely when the scorer is trying to hit a
+ * button. Fixed positioning takes them out of flow, so the scoring pad never
+ * moves under your thumb.
+ *
+ * The "syncing" state is gone entirely: the optimistic apply already shows the
+ * ball the instant it is tapped, so announcing a write that has already been
+ * reflected on screen was pure noise. Only genuinely actionable states remain.
+ */
+export function StatusBar({
+  conn,
+  pending,
+  role,
+  readOnlyExpected = false,
+}: {
+  conn: string;
+  pending: number;
+  role: 'owner' | 'scorer' | 'viewer';
+  /** True on the watch page, where being read-only is the whole point and
+   *  saying so would just be clutter. */
+  readOnlyExpected?: boolean;
+}) {
   const offline = conn !== 'online';
+
+  let tone: string;
+  let message: string;
+
+  if (offline) {
+    tone = 'border-live/50 bg-live/20 text-live';
+    message = readOnlyExpected
+      ? 'Reconnecting to the live feed…'
+      : pending > 0
+        ? `Offline — ${pending} ball${pending === 1 ? '' : 's'} saved, syncing when you reconnect`
+        : 'Offline — reconnecting…';
+  } else if (role === 'viewer' && !readOnlyExpected) {
+    tone = 'border-extra/40 bg-extra/15 text-extra';
+    message = 'Read-only — ask the match creator to invite you';
+  } else if (role === 'scorer' && !readOnlyExpected) {
+    tone = 'border-pitch-600 bg-pitch-850 text-ink-500';
+    message = 'Scoring as an invited scorer';
+  } else {
+    return null; // owner, online: nothing worth saying
+  }
+
   return (
-    <div
-      className={`px-4 py-2 text-center text-xs font-medium ${
-        offline ? 'bg-live/20 text-live' : 'bg-accent/15 text-accent'
-      }`}
-    >
-      {offline
-        ? pending > 0
-          ? `Offline — ${pending} ball${pending === 1 ? '' : 's'} saved, will sync when you reconnect`
-          : 'Offline — reconnecting…'
-        : `Syncing ${pending} change${pending === 1 ? '' : 's'}…`}
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      <div className={`w-full max-w-md rounded-lg border px-3 py-1.5 text-center text-[11px] ${tone}`}>
+        {message}
+      </div>
     </div>
   );
 }
 
 export function Toast({ message, onDismiss }: { message: string; onDismiss: () => void }) {
+  // Sits above the status bar so the two never overlap.
   return (
-    <div className="fixed inset-x-0 bottom-4 z-50 mx-auto w-[min(92vw,26rem)]">
+    <div className="fixed inset-x-0 bottom-12 z-50 mx-auto w-[min(92vw,26rem)] px-3">
       <button
         onClick={onDismiss}
         className="w-full rounded-xl border border-live/50 bg-pitch-800 px-4 py-3 text-left text-sm text-ink-50 shadow-lg"

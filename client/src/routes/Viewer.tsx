@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { oversDisplay } from '@shared/engine';
 import { useMatch } from '../hooks/useMatch';
-import { Panel, Screen } from '../components/ui';
+import { Panel, Screen, StatusBar } from '../components/ui';
 import { ScoreHero, ThisOver, activeInnings } from '../components/Scoreboard';
 import { BattingTable, BowlingTable } from '../components/Cards';
 
@@ -59,13 +59,7 @@ export default function Viewer() {
 
   return (
     <Screen>
-      <div className="mx-auto w-full max-w-md pb-10 lg:max-w-3xl">
-        {conn !== 'online' && (
-          <div className="bg-live/20 px-4 py-2 text-center text-xs text-live">
-            Reconnecting to the live feed…
-          </div>
-        )}
-
+      <div className="mx-auto w-full max-w-md pb-16 lg:max-w-3xl">
         <ScoreHero state={state} big />
 
         {/* Broadcast lower-third: who is at the crease right now */}
@@ -153,6 +147,8 @@ export default function Viewer() {
           Live scoring · updates automatically
         </p>
       </div>
+
+      <StatusBar conn={conn} pending={0} role="viewer" readOnlyExpected />
     </Screen>
   );
 }
