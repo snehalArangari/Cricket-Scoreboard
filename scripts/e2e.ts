@@ -227,6 +227,32 @@ async function main() {
   check('late joiner gets current runs', late.innings1.runs, 6);
   check('late joiner gets the cards', late.innings1.batting.some((c) => c.batted), true);
 
+  // --- ORDERING: the broadcast must reach the writer BEFORE its ack ---
+  // The client drops an operation from its pending outbox when the ack lands.
+  // If the ack came first, the UI would briefly fall back to the pre-operation
+  // state — and around the innings break that flicker was enough to wipe the
+  // scorer's on-field selections and re-open the gate under them.
+  {
+    let sawBroadcast = false;
+    let broadcastCameFirst: boolean | null = null;
+    const onState = () => {
+      sawBroadcast = true;
+    };
+    scorer.socket.on('match:state', onState);
+    await new Promise<void>((resolve) => {
+      scorer.socket.emit(
+        'ball:add',
+        { matchId, opId: 'op-order', ball: ball({ batRuns: 1 }) },
+        () => {
+          broadcastCameFirst = sawBroadcast;
+          resolve();
+        },
+      );
+    });
+    scorer.socket.off('match:state', onState);
+    check('broadcast reaches the writer before its ack', broadcastCameFirst, true);
+  }
+
   // --- an unknown match id is refused at the handshake ---
   let badMessage = '';
   try {

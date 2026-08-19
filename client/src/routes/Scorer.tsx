@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import type { Ball, Delivery, Player } from '@shared/types';
+import type { Ball, Delivery, InningsKey, Player } from '@shared/types';
 import { groupIntoOvers, isLegalDelivery, nextBatterPositions, oversDisplay } from '@shared/engine';
 import { useMatch } from '../hooks/useMatch';
 import {
@@ -51,10 +51,24 @@ export default function Scorer() {
 
   // Who is on the field is CHOSEN, not guessed. Openers are picked before the
   // first ball, a new batter after each wicket, and a new bowler each over.
-  const [openers, setOpeners] = useState<{ strikerId: string; nonStrikerId: string } | null>(null);
-  const [bowlerChoice, setBowlerChoice] = useState<{ overIndex: number; id: string } | null>(null);
+  //
+  // Every one of these carries the innings (and over, or ball) it belongs to, so
+  // it invalidates ITSELF when the match moves on. An effect that cleared them
+  // on an innings change looked equivalent but was not: the derived innings can
+  // flip briefly while an operation is in flight, and each flip wiped a
+  // selection the scorer had already made, re-opening the gate underneath them.
+  const [openers, setOpeners] = useState<{
+    key: InningsKey;
+    strikerId: string;
+    nonStrikerId: string;
+  } | null>(null);
+  const [bowlerChoice, setBowlerChoice] = useState<{
+    key: InningsKey;
+    overIndex: number;
+    id: string;
+  } | null>(null);
   const [incoming, setIncoming] = useState<{ afterBallId: string; id: string } | null>(null);
-  const [swapped, setSwapped] = useState(false);
+  const [swappedFor, setSwappedFor] = useState<string | null>(null);
 
   const [picker, setPicker] = useState<'bowler' | null>(null);
   const [composer, setComposer] = useState<{ mode: 'new' | 'edit'; index?: number } | null>(null);
@@ -69,14 +83,6 @@ export default function Scorer() {
   const bowlingTeam = view?.bowlingTeam;
   const inningsKey = view?.key;
 
-  // Each innings starts fresh — new openers, new bowler.
-  useEffect(() => {
-    setOpeners(null);
-    setBowlerChoice(null);
-    setIncoming(null);
-    setSwapped(false);
-  }, [inningsKey]);
-
   const events = innings?.events ?? [];
   const legalBalls = innings?.legalBalls ?? 0;
   const overIndex = Math.floor(legalBalls / 6); // the over now being bowled, 0-based
@@ -90,8 +96,11 @@ export default function Scorer() {
   const lastGroupComplete = lastGroup.filter((b) => isLegalDelivery(b.delivery)).length === 6;
   const currentOverBalls = lastGroupComplete ? [] : lastGroup;
   const bowlerFromLog = currentOverBalls.find((b) => b.delivery !== 'DEAD_BALL')?.bowlerId ?? null;
+  // A choice only counts for the innings and over it was made in.
   const bowlerId =
-    bowlerChoice?.overIndex === overIndex ? bowlerChoice.id : bowlerFromLog;
+    bowlerChoice && bowlerChoice.key === inningsKey && bowlerChoice.overIndex === overIndex
+      ? bowlerChoice.id
+      : bowlerFromLog;
 
   // The batter chosen to replace the one dismissed by the most recent ball.
   const incomingId = lastBall && incoming?.afterBallId === lastBall.id ? incoming.id : null;
@@ -106,11 +115,13 @@ export default function Scorer() {
   const availableBatters = (battingTeam?.players ?? []).filter((p) => !seen.has(p.id));
 
   // Positions for the next delivery.
+  const openersForInnings = openers && openers.key === inningsKey ? openers : null;
+
   let strikerId: string | null = null;
   let nonStrikerId: string | null = null;
   if (events.length === 0) {
-    strikerId = openers?.strikerId ?? null;
-    nonStrikerId = openers?.nonStrikerId ?? null;
+    strikerId = openersForInnings?.strikerId ?? null;
+    nonStrikerId = openersForInnings?.nonStrikerId ?? null;
   } else if (lastBall) {
     const pos = nextBatterPositions(
       lastBall.strikerId,
@@ -122,6 +133,10 @@ export default function Scorer() {
     strikerId = pos.strikerId;
     nonStrikerId = pos.nonStrikerId;
   }
+  // The swap applies to the next delivery only, identified by the ball it
+  // follows ('start' before the first one).
+  const swapAnchor = lastBall ? lastBall.id : `start:${inningsKey}`;
+  const swapped = swappedFor === swapAnchor;
   if (swapped) [strikerId, nonStrikerId] = [nonStrikerId, strikerId];
 
   const byId = (team: Player[] | undefined, id: string | null) =>
@@ -131,7 +146,7 @@ export default function Scorer() {
   const bowler = byId(bowlingTeam?.players, bowlerId);
 
   // ---- The gates. Scoring is blocked until each is answered. ----
-  const needOpeners = Boolean(live && events.length === 0 && !openers);
+  const needOpeners = Boolean(live && events.length === 0 && !openersForInnings);
   const needNewBatter = Boolean(
     live && !needOpeners && lastBall?.wicket && !incomingId && availableBatters.length > 0,
   );
@@ -149,7 +164,7 @@ export default function Scorer() {
       bowlerId: bowler.id,
       wicket,
     });
-    setSwapped(false);
+    setSwappedFor(null);
   }
 
   function openComposer(mode: 'new' | 'edit', index?: number) {
@@ -273,8 +288,8 @@ export default function Scorer() {
             bowlers={bowlingTeam.players}
             innings={innings}
             onConfirm={({ strikerId: s, nonStrikerId: ns, bowlerId: b }) => {
-              setOpeners({ strikerId: s, nonStrikerId: ns });
-              setBowlerChoice({ overIndex: 0, id: b });
+              setOpeners({ key: view.key, strikerId: s, nonStrikerId: ns });
+              setBowlerChoice({ key: view.key, overIndex: 0, id: b });
             }}
           />
         )}
@@ -294,7 +309,7 @@ export default function Scorer() {
             bowlers={bowlingTeam.players}
             previousBowlerId={innings.lastBowlerId}
             innings={innings}
-            onConfirm={(id) => setBowlerChoice({ overIndex, id })}
+            onConfirm={(id) => setBowlerChoice({ key: view.key, overIndex, id })}
           />
         )}
 
@@ -333,7 +348,7 @@ export default function Scorer() {
             </div>
             {!readOnly && (
               <button
-                onClick={() => setSwapped((s) => !s)}
+                onClick={() => setSwappedFor((cur) => (cur === swapAnchor ? null : swapAnchor))}
                 className={`pressable mt-1.5 w-full rounded-lg border py-1.5 text-[11px] ${
                   swapped
                     ? 'border-accent/50 bg-accent/12 text-accent'
@@ -477,7 +492,7 @@ export default function Scorer() {
           players={bowlingTeam.players}
           selectedId={bowlerId}
           noteFor={(p) => (p.id === innings.lastBowlerId ? 'bowled last over' : bowlLine(innings, p.id))}
-          onPick={(id) => setBowlerChoice({ overIndex, id })}
+          onPick={(id) => setBowlerChoice({ key: view.key, overIndex, id })}
           onClose={() => setPicker(null)}
         />
       )}

@@ -64,6 +64,20 @@ function emit(socket: Socket, event: string, payload: unknown): Promise<any> {
   });
 }
 
+async function waitState(
+  client: Client,
+  predicate: (s: MatchState) => boolean,
+  label: string,
+): Promise<MatchState> {
+  const deadline = Date.now() + 20000;
+  while (Date.now() < deadline) {
+    const found = [...client.states].reverse().find(predicate);
+    if (found) return found;
+    await sleep(40);
+  }
+  throw new Error(`timed out waiting for ${label}`);
+}
+
 async function waitFor(fn: () => boolean, label: string) {
   const deadline = Date.now() + 15000;
   while (Date.now() < deadline) {
@@ -101,7 +115,8 @@ async function main() {
   const created = await api('/api/matches', undefined, {
     method: 'POST',
     body: JSON.stringify({
-      overs: 5,
+      // Long enough to exceed the 30-ball viewer trim further down.
+      overs: 20,
       teamAName: 'Owners',
       teamBName: 'Guests',
       teamAPlayers: ['a', 'b', 'c'],
@@ -211,6 +226,35 @@ async function main() {
     ball: ball({ batRuns: 6 }),
   });
   check('revoked scorer cannot write', blocked?.code, 'FORBIDDEN');
+
+  // --- WRITERS get the full ball log; viewers get a trimmed tail ---
+  // Viewers only render recent balls, so their payload is trimmed. Writers must
+  // never be: edit and delete address a ball by its INDEX, so a truncated log
+  // would silently point them at the wrong delivery. The trim is 30, so this
+  // only shows up in a long innings — which is why nothing else caught it.
+  {
+    for (let i = 0; i < 34; i++) {
+      await emit(owner.socket, 'ball:add', {
+        matchId,
+        opId: `bulk-${i}`,
+        ball: ball({ batRuns: 0 }),
+      });
+    }
+    // Wait on a field present in BOTH views, then assert on the log length —
+    // otherwise a regression times out instead of failing with a clear message.
+    const ownerState = await waitState(owner, (s) => s.innings1.legalBalls >= 34, 'bulk balls');
+    check('owner receives the FULL ball log', ownerState.innings1.events.length > 30, true);
+
+    const plain = await connect(matchId);
+    const viewerState = await waitState(plain, () => true, 'viewer state');
+    check('viewer log is trimmed', viewerState.innings1.events.length <= 30, true);
+    check(
+      'but the viewer total is still complete',
+      viewerState.innings1.runs,
+      ownerState.innings1.runs,
+    );
+    plain.socket.disconnect();
+  }
 
   // --- the owner is unaffected throughout ---
   const stillFine = await emit(owner.socket, 'ball:add', {

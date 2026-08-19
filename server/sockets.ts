@@ -200,7 +200,7 @@ async function broadcast(io: Server, core: MatchCore): Promise<void> {
   const scorer = scorerView(core);
   const sockets = await io.in(room(core.matchId)).fetchSockets();
   for (const socket of sockets) {
-    socket.emit('match:state', socket.data.role === 'scorer' ? scorer : viewer);
+    socket.emit('match:state', canWrite(socket.data.role) ? scorer : viewer);
   }
 }
 
@@ -328,7 +328,7 @@ export function registerSocketHandlers(io: Server): void {
       const doc = await MatchModel.findOne({ matchId });
       if (doc) {
         const core = toCore(doc as MatchDoc);
-        socket.emit('match:state', role === 'scorer' ? scorerView(core) : viewerView(core));
+        socket.emit('match:state', canWrite(role) ? scorerView(core) : viewerView(core));
       }
     } catch {
       socket.emit('match:error', { code: 'LOAD_FAILED', message: 'Could not load the match' });
@@ -369,8 +369,14 @@ export function registerSocketHandlers(io: Server): void {
             return toCore(doc);
           });
 
-          ack?.({ ok: true, version: core.version });
+          // Broadcast BEFORE acking. The client drops an operation from its
+          // pending outbox when the ack arrives, so if the ack landed first the
+          // UI would briefly fall back to the pre-operation state — a visible
+          // flicker, and around the innings break it flips the derived innings
+          // long enough to wipe the scorer's on-field selections.
+          // Both packets travel the same socket, so this ordering holds.
           await broadcast(io, core);
+          ack?.({ ok: true, version: core.version });
         } catch (err) {
           const code = err instanceof AppError ? err.code : 'SERVER_ERROR';
           const message = err instanceof Error ? err.message : 'Unexpected error';
@@ -390,7 +396,7 @@ export function registerSocketHandlers(io: Server): void {
       const doc = (await MatchModel.findOne({ matchId })) as MatchDoc | null;
       if (!doc) return ack?.({ ok: false, code: 'MATCH_NOT_FOUND' });
       const core = toCore(doc);
-      socket.emit('match:state', role === 'scorer' ? scorerView(core) : viewerView(core));
+      socket.emit('match:state', canWrite(role) ? scorerView(core) : viewerView(core));
       ack?.({ ok: true, version: core.version });
     });
   });
