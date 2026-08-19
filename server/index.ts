@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { Server } from 'socket.io';
 
-import { connectDb, isDbConnected } from './db';
+import { dbLastError, dbState, isDbConnected, startDb } from './db';
 import { MatchModel, toCore, type MatchDoc } from './models/Match';
 import { hashToken, registerSocketHandlers, scorerView, viewerView } from './sockets';
 import { createMatch, validateSetup } from '../shared/engine';
@@ -41,8 +41,19 @@ app.use(express.json({ limit: '256kb' }));
 
 // ---- API (registered BEFORE the static handler and the SPA fallback) ----
 
+// Reports enough to diagnose a deployment without shell access — in particular
+// whether MONGODB_URI reached the process at all, which separates "env var not
+// set" from "set but the database is refusing us". The URI itself is never
+// echoed, only whether it exists.
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, db: isDbConnected(), time: new Date().toISOString() });
+  res.json({
+    ok: true,
+    db: isDbConnected(),
+    dbState: dbState(),
+    uriConfigured: Boolean(MONGODB_URI),
+    dbError: dbLastError(),
+    time: new Date().toISOString(),
+  });
 });
 
 function requireDb(res: express.Response): boolean {
@@ -144,23 +155,19 @@ const io = new Server(server, {
 
 registerSocketHandlers(io);
 
-async function start(): Promise<void> {
-  if (!MONGODB_URI) {
-    console.warn('[server] MONGODB_URI is not set — the API will return 503 until it is.');
-  } else {
-    try {
-      await connectDb(MONGODB_URI);
-    } catch (err) {
-      // Serve the app anyway so the failure is visible in the UI rather than
-      // being a process that refuses to boot.
-      console.error('[server] MongoDB connection failed:', (err as Error).message);
-    }
-  }
+// A database problem must never stop the web server from coming up — otherwise
+// the only symptom is a container that will not boot, with nothing to inspect.
+process.on('unhandledRejection', (reason) => {
+  console.error('[server] unhandled rejection:', reason);
+});
 
-  server.listen(PORT, '0.0.0.0', () => {
-    console.log(`[server] listening on http://localhost:${PORT}`);
-    console.log(`[server] client build: ${hasBuild ? CLIENT_DIST : 'not built (dev mode)'}`);
-  });
+if (!MONGODB_URI) {
+  console.warn('[server] MONGODB_URI is not set — the API will return 503 until it is.');
+} else {
+  startDb(MONGODB_URI); // connects in the background and retries
 }
 
-void start();
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`[server] listening on port ${PORT}`);
+  console.log(`[server] client build: ${hasBuild ? CLIENT_DIST : 'not built (dev mode)'}`);
+});
