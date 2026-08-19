@@ -13,7 +13,9 @@
     "build": "vite build",
     "start": "tsx server/index.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx shared/engine.test.ts"
+    "test": "tsx shared/engine.test.ts",
+    "test:e2e": "tsx scripts/e2e.ts",
+    "test:scorers": "tsx scripts/e2e-scorers.ts"
   },
   "dependencies": {
     "express": "5.2.1",

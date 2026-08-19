@@ -53,10 +53,27 @@ const InningsSchema = new Schema(
   subOpts,
 );
 
+/** A co-scorer the owner has invited. Only the token HASH is ever stored, so a
+ *  database dump cannot be replayed to gain write access. */
+const CoScorerSchema = new Schema(
+  {
+    id: { type: String, required: true },
+    name: { type: String, required: true },
+    tokenHash: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now },
+    lastSeenAt: { type: Date, default: null },
+    // Revoked rather than deleted, so the owner keeps a record of who had access.
+    revokedAt: { type: Date, default: null },
+  },
+  subOpts,
+);
+
 const MatchSchema = new Schema(
   {
     matchId: { type: String, required: true, unique: true, index: true },
+    /** The creator's token. Grants scoring AND the right to invite. */
     scorerTokenHash: { type: String, required: true },
+    coScorers: { type: [CoScorerSchema], default: [] },
     setup: {
       overs: { type: Number, required: true },
       teamA: { type: TeamSchema, required: true },

@@ -17,6 +17,8 @@ import type {
   InningsKey,
   MatchCore,
   MatchState,
+  ScorerRole,
+  ScorerSummary,
   SimplePayload,
 } from '../shared/types';
 
@@ -38,6 +40,66 @@ export class AppError extends Error {
   constructor(public code: string, message?: string) {
     super(message ?? code);
   }
+}
+
+/**
+ * Resolves a token to a role. The creator's token grants 'owner' (score plus
+ * invite); a live co-scorer token grants 'scorer' (score only); anything else,
+ * including a revoked token, is a plain viewer.
+ */
+export function resolveRole(
+  doc: { scorerTokenHash?: unknown; coScorers?: unknown },
+  token: unknown,
+): { role: ScorerRole; coScorerId: string | null } {
+  if (typeof token !== 'string' || token.length === 0) {
+    return { role: 'viewer', coScorerId: null };
+  }
+  const hash = hashToken(token);
+  if (safeEqual(hash, String(doc.scorerTokenHash ?? ''))) {
+    return { role: 'owner', coScorerId: null };
+  }
+  const list = Array.isArray(doc.coScorers) ? doc.coScorers : [];
+  for (const co of list as any[]) {
+    if (co?.revokedAt) continue;
+    if (safeEqual(hash, String(co?.tokenHash ?? ''))) {
+      return { role: 'scorer', coScorerId: String(co.id) };
+    }
+  }
+  return { role: 'viewer', coScorerId: null };
+}
+
+export function canWrite(role: ScorerRole): boolean {
+  return role === 'owner' || role === 'scorer';
+}
+
+// Which scorers are currently connected, per match. In-memory and therefore
+// per-instance — accurate on the single instance the free tier gives us, and
+// only ever used to decorate the owner's list.
+const presence = new Map<string, Map<string, number>>();
+
+function presenceKey(role: ScorerRole, coScorerId: string | null): string | null {
+  if (role === 'owner') return 'owner';
+  if (role === 'scorer' && coScorerId) return coScorerId;
+  return null;
+}
+
+export function onlineScorerIds(matchId: string): string[] {
+  return [...(presence.get(matchId)?.keys() ?? [])];
+}
+
+function addPresence(matchId: string, key: string) {
+  const map = presence.get(matchId) ?? new Map<string, number>();
+  map.set(key, (map.get(key) ?? 0) + 1);
+  presence.set(matchId, map);
+}
+
+function dropPresence(matchId: string, key: string) {
+  const map = presence.get(matchId);
+  if (!map) return;
+  const next = (map.get(key) ?? 1) - 1;
+  if (next <= 0) map.delete(key);
+  else map.set(key, next);
+  if (map.size === 0) presence.delete(matchId);
 }
 
 // ---- Per-match serialization ----
@@ -82,6 +144,52 @@ export function viewerView(core: MatchCore): MatchState {
 
 function room(matchId: string): string {
   return `match:${matchId}`;
+}
+
+/** The co-scorer list as the owner sees it. Tokens are never included. */
+export function scorerSummaries(doc: any, matchId: string): ScorerSummary[] {
+  const online = new Set(onlineScorerIds(matchId));
+  const list = Array.isArray(doc?.coScorers) ? doc.coScorers : [];
+  return list.map((c: any) => ({
+    id: String(c.id),
+    name: String(c.name),
+    revoked: Boolean(c.revokedAt),
+    createdAt: new Date(c.createdAt ?? Date.now()).toISOString(),
+    lastSeenAt: c.lastSeenAt ? new Date(c.lastSeenAt).toISOString() : null,
+    online: online.has(String(c.id)),
+  }));
+}
+
+/** Pushes the scorer list to owners only — nobody else may see it. */
+async function notifyScorers(io: Server, matchId: string): Promise<void> {
+  try {
+    const doc = await MatchModel.findOne({ matchId }).lean();
+    if (!doc) return;
+    const scorers = scorerSummaries(doc, matchId);
+    const ownerOnline = onlineScorerIds(matchId).includes('owner');
+    const sockets = await io.in(room(matchId)).fetchSockets();
+    for (const s of sockets) {
+      if (s.data.role === 'owner') s.emit('match:scorers', { scorers, ownerOnline });
+    }
+  } catch {
+    /* presence decoration only — never worth failing a connection over */
+  }
+}
+
+/** Called from the REST layer after an invite or a revoke. */
+export function broadcastScorers(io: Server, matchId: string): void {
+  void notifyScorers(io, matchId);
+}
+
+/** Force-disconnects sockets whose co-scorer access has just been revoked. */
+export async function kickRevoked(io: Server, matchId: string, coScorerId: string): Promise<void> {
+  const sockets = await io.in(room(matchId)).fetchSockets();
+  for (const s of sockets) {
+    if (s.data.coScorerId === coScorerId) {
+      s.emit('match:error', { code: 'REVOKED', message: 'Your scoring access was removed' });
+      s.disconnect(true);
+    }
+  }
 }
 
 /** Full authoritative state to everyone in the room — never a delta, because an
@@ -182,13 +290,10 @@ export function registerSocketHandlers(io: Server): void {
       const doc = await MatchModel.findOne({ matchId }).lean();
       if (!doc) return next(new Error('MATCH_NOT_FOUND'));
 
+      const { role, coScorerId } = resolveRole(doc, auth.scorerToken);
       socket.data.matchId = matchId;
-      socket.data.role =
-        typeof auth.scorerToken === 'string' &&
-        auth.scorerToken.length > 0 &&
-        safeEqual(hashToken(auth.scorerToken), String(doc.scorerTokenHash))
-          ? 'scorer'
-          : 'viewer';
+      socket.data.role = role;
+      socket.data.coScorerId = coScorerId;
       next();
     } catch (err) {
       next(new Error('AUTH_FAILED'));
@@ -197,8 +302,25 @@ export function registerSocketHandlers(io: Server): void {
 
   io.on('connection', async (socket: Socket) => {
     const matchId: string = socket.data.matchId;
-    const role: string = socket.data.role;
+    const role: ScorerRole = socket.data.role;
+    const coScorerId: string | null = socket.data.coScorerId;
     socket.join(room(matchId));
+
+    const pKey = presenceKey(role, coScorerId);
+    if (pKey) {
+      addPresence(matchId, pKey);
+      void notifyScorers(io, matchId);
+      socket.on('disconnect', () => {
+        dropPresence(matchId, pKey);
+        void notifyScorers(io, matchId);
+      });
+      if (coScorerId) {
+        void MatchModel.updateOne(
+          { matchId, 'coScorers.id': coScorerId },
+          { $set: { 'coScorers.$.lastSeenAt': new Date() } },
+        ).catch(() => {});
+      }
+    }
 
     // A viewer joining mid-innings, joining after the match ended, or a scorer
     // reconnecting all take this one path — there is no separate catch-up code.
@@ -217,9 +339,8 @@ export function registerSocketHandlers(io: Server): void {
     const write =
       (mutate: Mutator) =>
       async (payload: any, ack?: (r: unknown) => void) => {
-        if (role !== 'scorer') {
-          const res = { ok: false, code: 'FORBIDDEN' };
-          ack?.(res);
+        if (!canWrite(role)) {
+          ack?.({ ok: false, code: 'FORBIDDEN' });
           socket.emit('match:error', { code: 'FORBIDDEN', message: 'Read-only viewer' });
           return;
         }

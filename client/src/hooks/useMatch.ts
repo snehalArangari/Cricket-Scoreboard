@@ -7,7 +7,14 @@ import {
   startSecondInnings,
   undoLastBall,
 } from '@shared/engine';
-import type { Ball, InningsKey, MatchCore, MatchState } from '@shared/types';
+import type {
+  Ball,
+  InningsKey,
+  MatchCore,
+  MatchState,
+  ScorerRole,
+  ScorerSummary,
+} from '@shared/types';
 import { getSocket } from '../lib/socket';
 import { idbLoad, idbSave } from '../lib/idb';
 import { uid } from '../lib/uid';
@@ -99,7 +106,8 @@ export function useMatch(matchId: string, scorerToken?: string) {
   const [serverState, setServerState] = useState<MatchState | null>(null);
   const [outbox, setOutbox] = useState<PendingOp[]>([]);
   const [conn, setConn] = useState<ConnState>('connecting');
-  const [role, setRole] = useState<'scorer' | 'viewer'>('viewer');
+  const [role, setRole] = useState<ScorerRole>('viewer');
+  const [scorers, setScorers] = useState<ScorerSummary[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [fatal, setFatal] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -159,11 +167,18 @@ export function useMatch(matchId: string, scorerToken?: string) {
       if (err.message === 'MATCH_NOT_FOUND') setFatal('MATCH_NOT_FOUND');
       else if (err.message === 'NO_MATCH_ID') setFatal('NO_MATCH_ID');
     };
-    const onRole = (payload: { role: 'scorer' | 'viewer' }) => setRole(payload.role);
-    const onError = (payload: { code: string; message: string }) => setNotice(payload.message);
+    const onRole = (payload: { role: ScorerRole }) => setRole(payload.role);
+    const onScorers = (payload: { scorers: ScorerSummary[] }) => setScorers(payload.scorers ?? []);
+    const onError = (payload: { code: string; message: string }) => {
+      setNotice(payload.message);
+      // Access withdrawn mid-match: drop to viewer rather than leaving dead
+      // buttons that silently fail.
+      if (payload.code === 'REVOKED') setRole('viewer');
+    };
 
     socket.on('match:state', onState);
     socket.on('match:role', onRole);
+    socket.on('match:scorers', onScorers);
     socket.on('match:error', onError);
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
@@ -173,6 +188,7 @@ export function useMatch(matchId: string, scorerToken?: string) {
     return () => {
       socket.off('match:state', onState);
       socket.off('match:role', onRole);
+      socket.off('match:scorers', onScorers);
       socket.off('match:error', onError);
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
@@ -234,6 +250,11 @@ export function useMatch(matchId: string, scorerToken?: string) {
   return {
     state,
     role,
+    /** Owners and invited co-scorers may both write; viewers may not. */
+    mayScore: role === 'owner' || role === 'scorer',
+    isOwner: role === 'owner',
+    scorers,
+    setScorers,
     conn,
     notice,
     fatal,

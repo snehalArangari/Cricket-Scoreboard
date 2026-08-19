@@ -11,6 +11,24 @@ export interface Player {
   name: string;
 }
 
+/**
+ * Who a connected socket is allowed to be:
+ *   owner  — created the match; can score AND invite or revoke co-scorers
+ *   scorer — invited by the owner; can score, but cannot manage other scorers
+ *   viewer — anyone with the public link; read-only
+ */
+export type ScorerRole = 'owner' | 'scorer' | 'viewer';
+
+/** A co-scorer as shown to the owner. Never carries the token itself. */
+export interface ScorerSummary {
+  id: string;
+  name: string;
+  revoked: boolean;
+  createdAt: string;
+  lastSeenAt: string | null;
+  online: boolean;
+}
+
 export interface Team {
   name: string;
   players: Player[];

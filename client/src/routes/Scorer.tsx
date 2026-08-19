@@ -3,8 +3,14 @@ import { useNavigate, useParams } from 'react-router-dom';
 import type { Ball, Delivery, Player } from '@shared/types';
 import { groupIntoOvers, isLegalDelivery, nextBatterPositions, oversDisplay } from '@shared/engine';
 import { useMatch } from '../hooks/useMatch';
-import { createMatchRequest, loadScorerToken, saveScorerToken } from '../lib/api';
+import {
+  consumeInviteToken,
+  createMatchRequest,
+  loadScorerToken,
+  saveScorerToken,
+} from '../lib/api';
 import ResultPanel from '../components/ResultPanel';
+import ScorerManager from '../components/ScorerManager';
 import { Btn, ConnectionBar, Panel, Screen, Toast } from '../components/ui';
 import { ScoreHero, ThisOver, activeInnings } from '../components/Scoreboard';
 import { Scorecards } from '../components/Cards';
@@ -17,10 +23,19 @@ const EMPTY_DRAFT: ComposerDraft = { delivery: 'NORMAL', batRuns: 0, wicket: nul
 export default function Scorer() {
   const { matchId = '' } = useParams();
   const navigate = useNavigate();
-  const token = useMemo(() => loadScorerToken(matchId), [matchId]);
+  // An invite arrives as #t=<token>. Claim it before the socket connects, so
+  // the handshake presents it and the server grants scoring rights straight away.
+  const token = useMemo(() => {
+    consumeInviteToken(matchId);
+    return loadScorerToken(matchId);
+  }, [matchId]);
   const {
     state,
     role,
+    mayScore,
+    isOwner,
+    scorers,
+    setScorers,
     conn,
     notice,
     fatal,
@@ -237,7 +252,7 @@ export default function Scorer() {
     );
   }
 
-  const readOnly = role !== 'scorer';
+  const readOnly = !mayScore;
   const outName =
     lastBall?.wicket
       ? battingTeam.players.find((p) => p.id === lastBall.wicket!.outBatterId)?.name ?? 'The batter'
@@ -250,7 +265,12 @@ export default function Scorer() {
 
         {readOnly && (
           <div className="bg-extra/15 px-4 py-2 text-center text-xs text-extra">
-            You are viewing this match read-only — the scoring device holds the key.
+            Read-only — ask the match creator to invite you as a scorer.
+          </div>
+        )}
+        {role === 'scorer' && (
+          <div className="bg-good/12 px-4 py-2 text-center text-xs text-good">
+            You are scoring as an invited scorer.
           </div>
         )}
 
@@ -407,9 +427,21 @@ export default function Scorer() {
             {copied ? '✓ Link copied' : '⤴ Share live link'}
           </Btn>
           <p className="mt-1.5 text-center text-[11px] text-ink-500">
-            Anyone with the link can watch. Only this device can score.
+            Anyone with this link can watch, but not score.
           </p>
         </div>
+
+        {/* Inviting co-scorers is the creator's privilege alone. */}
+        {isOwner && (
+          <div className="mt-3 px-4">
+            <ScorerManager
+              matchId={matchId}
+              token={token}
+              scorers={scorers}
+              onRefresh={setScorers}
+            />
+          </div>
+        )}
 
         <div className="mt-4 px-4">
           <Scorecards

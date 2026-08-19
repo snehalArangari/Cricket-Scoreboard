@@ -147,7 +147,9 @@ async function main() {
   const viewer = await connect(matchId);
 
   await waitFor(() => scorer.role() !== null && viewer.role() !== null, 'roles');
-  check('token holder is the scorer', scorer.role(), 'scorer');
+  // The creator is the owner: scores AND manages co-scorers. Invited scorers
+  // get role 'scorer' — see scripts/e2e-scorers.ts.
+  check('token holder is the owner', scorer.role(), 'owner');
   check('no token means viewer', viewer.role(), 'viewer');
 
   // --- score a boundary; confirm the VIEWER sees it live ---

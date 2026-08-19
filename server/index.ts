@@ -8,7 +8,16 @@ import { Server } from 'socket.io';
 
 import { dbLastError, dbState, isDbConnected, startDb } from './db';
 import { MatchModel, toCore, type MatchDoc } from './models/Match';
-import { hashToken, registerSocketHandlers, scorerView, viewerView } from './sockets';
+import {
+  broadcastScorers,
+  hashToken,
+  kickRevoked,
+  registerSocketHandlers,
+  resolveRole,
+  scorerSummaries,
+  scorerView,
+  viewerView,
+} from './sockets';
 import { createMatch, validateSetup } from '../shared/engine';
 
 // Node's built-in .env loader — no dotenv dependency. Absent file is fine.
@@ -106,16 +115,84 @@ app.get('/api/matches/:matchId', async (req, res) => {
       return;
     }
     const core = toCore(doc);
-    const token = req.get('x-scorer-token');
-    const isScorer =
-      typeof token === 'string' &&
-      token.length > 0 &&
-      hashToken(token) === String(doc.get('scorerTokenHash'));
-    res.json(isScorer ? scorerView(core) : viewerView(core));
+    // Invited co-scorers get the full ball log, same as the creator.
+    const { role } = resolveRole(doc.toObject(), req.get('x-scorer-token'));
+    res.json(role === 'viewer' ? viewerView(core) : scorerView(core));
   } catch (err) {
     console.error('[api] fetch match failed:', err);
     res.status(500).json({ error: 'FETCH_FAILED' });
   }
+});
+
+// ---- Co-scorers. Every route here is owner-only. ----
+
+/** Loads the match and rejects unless the caller holds the CREATOR's token. */
+async function requireOwner(
+  req: express.Request,
+  res: express.Response,
+): Promise<MatchDoc | null> {
+  if (!requireDb(res)) return null;
+  const doc = (await MatchModel.findOne({ matchId: req.params.matchId })) as MatchDoc | null;
+  if (!doc) {
+    res.status(404).json({ error: 'MATCH_NOT_FOUND' });
+    return null;
+  }
+  const { role } = resolveRole(doc.toObject(), req.get('x-scorer-token'));
+  if (role !== 'owner') {
+    // Deliberately the same response whether the caller is an invited scorer or
+    // a stranger — only the creator gets to know anything about this list.
+    res.status(403).json({ error: 'OWNER_ONLY', message: 'Only the match creator can do this' });
+    return null;
+  }
+  return doc;
+}
+
+app.get('/api/matches/:matchId/scorers', async (req, res) => {
+  const doc = await requireOwner(req, res);
+  if (!doc) return;
+  res.json({ scorers: scorerSummaries(doc.toObject(), doc.get('matchId')) });
+});
+
+app.post('/api/matches/:matchId/scorers', async (req, res) => {
+  const doc = await requireOwner(req, res);
+  if (!doc) return;
+
+  const name = String(req.body?.name ?? '').trim().slice(0, 40);
+  if (!name) {
+    res.status(400).json({ error: 'NAME_REQUIRED', message: 'Give this person a name' });
+    return;
+  }
+  const existing = (doc.get('coScorers') as any[]) ?? [];
+  if (existing.filter((c) => !c.revokedAt).length >= 10) {
+    res.status(400).json({ error: 'TOO_MANY', message: 'Up to 10 co-scorers at a time' });
+    return;
+  }
+
+  const token = crypto.randomBytes(24).toString('base64url');
+  const id = shortId(8);
+  existing.push({ id, name, tokenHash: hashToken(token), createdAt: new Date(), revokedAt: null });
+  doc.set('coScorers', existing);
+  await doc.save();
+
+  broadcastScorers(io, doc.get('matchId'));
+  // The token is returned exactly once. It is stored only as a hash, so it can
+  // never be shown again — if the link is lost, revoke and re-invite.
+  res.status(201).json({ id, name, token });
+});
+
+app.delete('/api/matches/:matchId/scorers/:scorerId', async (req, res) => {
+  const doc = await requireOwner(req, res);
+  if (!doc) return;
+
+  const list = ((doc.get('coScorers') as any[]) ?? []).map((c) =>
+    c.id === req.params.scorerId && !c.revokedAt ? { ...c, revokedAt: new Date() } : c,
+  );
+  doc.set('coScorers', list);
+  await doc.save();
+
+  await kickRevoked(io, doc.get('matchId'), req.params.scorerId);
+  broadcastScorers(io, doc.get('matchId'));
+  res.json({ ok: true, scorers: scorerSummaries(doc.toObject(), doc.get('matchId')) });
 });
 
 // ---- Static SPA ----
