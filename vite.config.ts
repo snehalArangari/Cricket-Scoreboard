@@ -24,9 +24,9 @@ export default defineConfig({
     proxy: {
       // 127.0.0.1, NOT localhost — Node resolves localhost to ::1 first, and the
       // proxy then intermittently ECONNREFUSEs against a server bound to 0.0.0.0.
-      '/api': { target: 'http://127.0.0.1:3000', changeOrigin: true },
+      '/api': { target: 'http://127.0.0.1:3100', changeOrigin: true },
       // ws:true is required or the socket falls back to polling forever in dev
-      '/socket.io': { target: 'http://127.0.0.1:3000', ws: true, changeOrigin: true },
+      '/socket.io': { target: 'http://127.0.0.1:3100', ws: true, changeOrigin: true },
     },
   },
   build: {

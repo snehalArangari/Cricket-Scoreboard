@@ -7,7 +7,7 @@ import { io, type Socket } from 'socket.io-client';
 import type { MatchState } from '../shared/types';
 import { Session, signedInUser } from './testkit';
 
-const BASE = process.env.E2E_BASE ?? 'http://127.0.0.1:3000';
+const BASE = process.env.E2E_BASE ?? 'http://127.0.0.1:3100';
 
 // The owner's session cookie; every handshake in this suite carries it.
 let COOKIE = '';

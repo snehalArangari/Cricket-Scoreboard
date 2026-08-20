@@ -9,7 +9,7 @@ import { io, type Socket } from 'socket.io-client';
 import type { MatchState } from '../shared/types';
 import { signedInUser } from './testkit';
 
-const BASE = process.env.E2E_BASE ?? 'http://127.0.0.1:3000';
+const BASE = process.env.E2E_BASE ?? 'http://127.0.0.1:3100';
 
 // Set once the throwaway account is created; every socket handshake carries it.
 let COOKIE = '';

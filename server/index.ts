@@ -22,6 +22,9 @@ import {
 import { createMatch, validateSetup } from '../shared/engine';
 import { attachUser, requireAuth } from './auth';
 import { authRouter } from './routes/authRoutes';
+import { tournamentRouter } from './routes/tournamentRoutes';
+import { TournamentModel } from './models/Tournament';
+import { battingFirstIsTypedA } from '../shared/engine';
 import { UserModel } from './models/User';
 import { registeredCount } from '../shared/engine';
 
@@ -81,6 +84,7 @@ function requireDb(res: express.Response): boolean {
 }
 
 app.use('/api/auth', authRouter);
+app.use('/api/tournaments', tournamentRouter);
 
 /** Bulk-resolves claimed usernames to real accounts. Unknown handles are simply
  *  dropped, so an unrecognised name becomes a guest rather than an error. */
@@ -157,6 +161,39 @@ app.post('/api/matches', requireAuth, async (req, res) => {
       matchId = shortId();
     }
 
+    // If this match belongs to a tournament, work out which tournament team
+    // ended up in slot A. validateSetup reorders the sides by the toss, so the
+    // typed order is not necessarily the batting order.
+    let tournament: { tournamentId: string; teamAId: string; teamBId: string } | null = null;
+    if (body.tournamentId) {
+      const t = await TournamentModel.findOne({
+        tournamentId: String(body.tournamentId),
+      }).lean();
+      if (!t) {
+        res.status(404).json({ error: 'NO_TOURNAMENT', message: 'No such tournament' });
+        return;
+      }
+      const ids = ((t as any).teams ?? []).map((x: any) => String(x.id));
+      const typedA = String(body.tournamentTeamAId ?? '');
+      const typedB = String(body.tournamentTeamBId ?? '');
+      if (!ids.includes(typedA) || !ids.includes(typedB) || typedA === typedB) {
+        res.status(400).json({
+          error: 'BAD_TOURNAMENT_TEAMS',
+          message: 'Pick two different teams from this tournament',
+        });
+        return;
+      }
+      const aBatsFirst = battingFirstIsTypedA(
+        body.tossWinner === 'B' ? 'B' : 'A',
+        body.tossDecision === 'BOWL' ? 'BOWL' : 'BAT',
+      );
+      tournament = {
+        tournamentId: String(body.tournamentId),
+        teamAId: aBatsFirst ? typedA : typedB,
+        teamBId: aBatsFirst ? typedB : typedA,
+      };
+    }
+
     const scorerToken = crypto.randomBytes(24).toString('base64url');
     const core = createMatch(matchId, setup);
 
@@ -164,6 +201,7 @@ app.post('/api/matches', requireAuth, async (req, res) => {
       ...core,
       scorerTokenHash: hashToken(scorerToken),
       ownerUserId: req.user!.id,
+      tournament,
     });
 
     // The token is returned exactly once, here, and never leaves the server again.

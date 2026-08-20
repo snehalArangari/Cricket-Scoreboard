@@ -14,6 +14,11 @@ export interface CreateMatchInput {
   /** Which team AS TYPED won the toss; the server orders the sides from this. */
   tossWinner?: 'A' | 'B' | null;
   tossDecision?: 'BAT' | 'BOWL' | null;
+  /** Set to attach this match to a tournament. The tournament team ids follow
+   *  the TYPED order; the server maps them onto the batting order itself. */
+  tournamentId?: string | null;
+  tournamentTeamAId?: string | null;
+  tournamentTeamBId?: string | null;
 }
 
 export interface CreateMatchResult {

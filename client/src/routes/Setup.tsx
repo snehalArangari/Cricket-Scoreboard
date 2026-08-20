@@ -4,6 +4,7 @@ import { createMatchRequest, saveScorerToken } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
 import { Btn, Field, Panel, Screen, TextInput } from '../components/ui';
 import SquadBuilder, { type SquadSlot } from '../components/SquadBuilder';
+import { listTournaments, type TournamentSummary } from '../lib/tournaments';
 
 export default function Setup() {
   const navigate = useNavigate();
@@ -21,6 +22,10 @@ export default function Setup() {
   const [tossDecision, setTossDecision] = useState<'BAT' | 'BOWL' | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tournaments, setTournaments] = useState<TournamentSummary[]>([]);
+  const [tournamentId, setTournamentId] = useState('');
+  const [tTeamA, setTTeamA] = useState('');
+  const [tTeamB, setTTeamB] = useState('');
 
   // Seed the creator into team A: they are registered by definition, so half the
   // "one registered player per side" rule is met before they touch anything.
@@ -30,6 +35,27 @@ export default function Setup() {
     setSquadA([{ name: user.displayName, username: user.username }]);
   }, [user]);
 
+  useEffect(() => {
+    void listTournaments()
+      .then((r) => setTournaments(r.tournaments))
+      .catch(() => setTournaments([]));
+  }, []);
+
+  const chosen = tournaments.find((t) => t.tournamentId === tournamentId) ?? null;
+
+  // Picking a tournament team also names the side, so the scoreboard and the
+  // points table can never disagree about who played.
+  function pickTeam(side: 'A' | 'B', teamId: string) {
+    const team = chosen?.teams.find((t) => t.id === teamId);
+    if (side === 'A') {
+      setTTeamA(teamId);
+      if (team) setTeamAName(team.name);
+    } else {
+      setTTeamB(teamId);
+      if (team) setTeamBName(team.name);
+    }
+  }
+
   const nameA = teamAName.trim() || 'Team A';
   const nameB = teamBName.trim() || 'Team B';
 
@@ -38,7 +64,9 @@ export default function Setup() {
   const tossDone = tossWinner !== null && tossDecision !== null;
   const enoughPlayers = squadA.length >= 2 && squadB.length >= 2;
   const enoughRegistered = regA >= 1 && regB >= 1;
-  const valid = enoughPlayers && enoughRegistered && Number(overs) >= 1 && tossDone;
+  const tournamentOk = !tournamentId || (tTeamA !== '' && tTeamB !== '' && tTeamA !== tTeamB);
+  const valid =
+    enoughPlayers && enoughRegistered && Number(overs) >= 1 && tossDone && tournamentOk;
 
   // The winner bats first if they chose to bat, otherwise the other side does.
   const battingFirst =
@@ -65,6 +93,9 @@ export default function Setup() {
         teamBPlayers: squadB,
         tossWinner,
         tossDecision,
+        tournamentId: tournamentId || null,
+        tournamentTeamAId: tournamentId ? tTeamA : null,
+        tournamentTeamBId: tournamentId ? tTeamB : null,
       });
       saveScorerToken(matchId, scorerToken);
       navigate(`/score/${matchId}`, { replace: true });
@@ -84,6 +115,12 @@ export default function Setup() {
             </h1>
             {user && (
               <div className="flex shrink-0 gap-1.5">
+                <Link
+                  to="/tournaments"
+                  className="pressable rounded-lg border border-pitch-700 px-2.5 py-1.5 text-[11px] text-ink-300"
+                >
+                  Tournaments
+                </Link>
                 <Link
                   to={`/players/${user.username}`}
                   className="pressable rounded-lg border border-pitch-700 px-2.5 py-1.5 text-[11px] text-ink-300"
@@ -110,6 +147,54 @@ export default function Setup() {
         </header>
 
         <div className="space-y-4">
+          {tournaments.length > 0 && (
+            <Panel className="p-4">
+              <Field label="Part of a tournament?" hint="Optional — results feed its points table">
+                <select
+                  value={tournamentId}
+                  onChange={(e) => {
+                    setTournamentId(e.target.value);
+                    setTTeamA('');
+                    setTTeamB('');
+                  }}
+                  className="w-full rounded-xl border border-pitch-600 bg-pitch-900 px-3 py-2.5 text-ink-50 outline-none focus:border-accent"
+                >
+                  <option value="">Standalone match</option>
+                  {tournaments.map((t) => (
+                    <option key={t.tournamentId} value={t.tournamentId}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+
+              {chosen && (
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  {(['A', 'B'] as const).map((side) => (
+                    <Field key={side} label={side === 'A' ? 'Team A is' : 'Team B is'}>
+                      <select
+                        value={side === 'A' ? tTeamA : tTeamB}
+                        onChange={(e) => pickTeam(side, e.target.value)}
+                        className="w-full rounded-xl border border-pitch-600 bg-pitch-900 px-3 py-2.5 text-ink-50 outline-none focus:border-accent"
+                      >
+                        <option value="">Choose…</option>
+                        {chosen.teams.map((t) => (
+                          <option
+                            key={t.id}
+                            value={t.id}
+                            disabled={t.id === (side === 'A' ? tTeamB : tTeamA)}
+                          >
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  ))}
+                </div>
+              )}
+            </Panel>
+          )}
+
           <Panel className="p-4">
             <div className="grid grid-cols-2 gap-3">
               <Field label="Team A">
@@ -212,7 +297,9 @@ export default function Setup() {
                   ? 'Each team needs a registered player'
                   : !tossDone
                     ? 'Record the toss to continue'
-                    : 'Start match'}
+                    : !tournamentOk
+                      ? 'Pick both tournament teams'
+                      : 'Start match'}
           </Btn>
 
           <p className="pb-6 text-center text-xs text-ink-500">

@@ -82,6 +82,21 @@ const MatchSchema = new Schema(
      *  token, so a shared device keeps working. */
     ownerUserId: { type: Schema.Types.ObjectId, ref: 'User', default: null, index: true },
     coScorers: { type: [CoScorerSchema], default: [] },
+    /** Set when the match belongs to a tournament. teamAId is whichever
+     *  tournament team ended up BATTING FIRST, so the standings never have to
+     *  re-derive the toss. */
+    tournament: {
+      type: new Schema(
+        {
+          tournamentId: { type: String, required: true },
+          teamAId: { type: String, required: true },
+          teamBId: { type: String, required: true },
+        },
+        subOpts,
+      ),
+      default: null,
+      index: true,
+    },
     setup: {
       overs: { type: Number, required: true },
       // teamA is whoever bats first — the toss is resolved before this is stored.

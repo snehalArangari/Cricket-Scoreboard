@@ -4,7 +4,7 @@
 // every suite needs to capture Set-Cookie and send it back. Doing that once here
 // keeps the suites about behaviour rather than plumbing.
 
-export const BASE = process.env.E2E_BASE ?? 'http://127.0.0.1:3000';
+export const BASE = process.env.E2E_BASE ?? 'http://127.0.0.1:3100';
 
 export class Session {
   private cookies = new Map<string, string>();

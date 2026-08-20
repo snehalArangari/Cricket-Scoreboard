@@ -570,10 +570,10 @@ export function validateSetup(input: {
 
   // The toss winner bats first if they chose to bat, otherwise the other side does.
   const winnerBatsFirst = decision === 'BAT';
-  const battingFirstIsTypedA = winner === 'A' ? winnerBatsFirst : !winnerBatsFirst;
+  const typedABatsFirst = battingFirstIsTypedA(winner, decision);
 
-  const batFirst = battingFirstIsTypedA ? typedA : typedB;
-  const bowlFirst = battingFirstIsTypedA ? typedB : typedA;
+  const batFirst = typedABatsFirst ? typedA : typedB;
+  const bowlFirst = typedABatsFirst ? typedB : typedA;
 
   return {
     overs,
@@ -582,6 +582,20 @@ export function validateSetup(input: {
     // After ordering, the winner is 'A' exactly when they chose to bat.
     toss: hasToss ? { wonBy: winnerBatsFirst ? 'A' : 'B', decision } : null,
   };
+}
+
+/**
+ * Which of the two teams AS TYPED bats first, given the toss.
+ * Exported because the tournament layer must decide which tournament team ends
+ * up in slot A, and duplicating this rule is how the two would drift apart.
+ */
+export function battingFirstIsTypedA(
+  tossWinner: 'A' | 'B' | null | undefined,
+  tossDecision: TossDecision | null | undefined,
+): boolean {
+  const winner = tossWinner === 'B' ? 'B' : 'A';
+  const winnerBatsFirst = tossDecision !== 'BOWL';
+  return winner === 'A' ? winnerBatsFirst : !winnerBatsFirst;
 }
 
 /** "Chennai won the toss and chose to bowl" — for display only. */
