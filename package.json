@@ -17,7 +17,9 @@
     "test:e2e": "tsx scripts/e2e.ts",
     "test:scorers": "tsx scripts/e2e-scorers.ts",
     "test:auth": "tsx scripts/e2e-auth.ts",
-    "test:squads": "tsx scripts/e2e-squads.ts"
+    "test:squads": "tsx scripts/e2e-squads.ts",
+    "test:stats": "tsx scripts/e2e-stats.ts",
+    "test:all": "npm test && npm run test:auth && npm run test:e2e && npm run test:scorers && npm run test:squads && npm run test:stats"
   },
   "dependencies": {
     "cookie-parser": "^1.4.7",

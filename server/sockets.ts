@@ -112,16 +112,22 @@ const chains = new Map<string, Promise<unknown>>();
 function withMatchLock<T>(matchId: string, fn: () => Promise<T>): Promise<T> {
   const prev = chains.get(matchId) ?? Promise.resolve();
   const next = prev.then(fn, fn);
-  chains.set(
-    matchId,
-    next.then(
-      () => {},
-      () => {},
-    ),
+
+  // `settled` swallows the outcome so the chain continues after a rejected
+  // operation. Everything internal must hang off THIS, not off `next`:
+  // next.finally() returns a promise that rejects whenever next rejects, and
+  // nothing was handling it — so every legitimately refused ball (an innings
+  // already over, say) surfaced as an unhandled rejection.
+  const settled: Promise<void> = next.then(
+    () => {},
+    () => {},
   );
-  void next.finally(() => {
-    if (chains.get(matchId) === next) chains.delete(matchId);
+  chains.set(matchId, settled);
+  void settled.finally(() => {
+    if (chains.get(matchId) === settled) chains.delete(matchId);
   });
+
+  // The caller still gets the real promise, and still handles the error.
   return next;
 }
 
@@ -330,18 +336,6 @@ export function registerSocketHandlers(io: Server): void {
       }
     }
 
-    // A viewer joining mid-innings, joining after the match ended, or a scorer
-    // reconnecting all take this one path — there is no separate catch-up code.
-    try {
-      const doc = await MatchModel.findOne({ matchId });
-      if (doc) {
-        const core = toCore(doc as MatchDoc);
-        socket.emit('match:state', canWrite(role) ? scorerView(core) : viewerView(core));
-      }
-    } catch {
-      socket.emit('match:error', { code: 'LOAD_FAILED', message: 'Could not load the match' });
-    }
-
     socket.emit('match:role', { role });
 
     const write =
@@ -407,5 +401,26 @@ export function registerSocketHandlers(io: Server): void {
       socket.emit('match:state', canWrite(role) ? scorerView(core) : viewerView(core));
       ack?.({ ok: true, version: core.version });
     });
+
+    // Sending the opening state is deliberately the LAST thing, and everything
+    // above it is synchronous.
+    //
+    // Socket.IO drops an event that arrives before its handler exists — it does
+    // not queue. Loading the match first meant a client emitting the instant
+    // 'connect' fired raced a database round trip, and anything sent inside that
+    // window vanished with no ack and no error. A scorer tapping a run the
+    // moment the page connects would simply lose the ball.
+    //
+    // A viewer joining mid-innings, joining after the match ended, and a scorer
+    // reconnecting all still take this one path.
+    try {
+      const doc = await MatchModel.findOne({ matchId });
+      if (doc) {
+        const core = toCore(doc as MatchDoc);
+        socket.emit('match:state', canWrite(role) ? scorerView(core) : viewerView(core));
+      }
+    } catch {
+      socket.emit('match:error', { code: 'LOAD_FAILED', message: 'Could not load the match' });
+    }
   });
 }

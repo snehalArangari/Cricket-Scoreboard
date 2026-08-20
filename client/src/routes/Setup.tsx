@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { createMatchRequest, saveScorerToken } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
 import { Btn, Field, Panel, Screen, TextInput } from '../components/ui';
@@ -83,12 +83,20 @@ export default function Setup() {
               CRICKET <span className="text-accent">LIVE</span>
             </h1>
             {user && (
-              <button
-                onClick={() => void logout()}
-                className="pressable rounded-lg border border-pitch-700 px-2.5 py-1.5 text-[11px] text-ink-300"
-              >
-                Sign out
-              </button>
+              <div className="flex shrink-0 gap-1.5">
+                <Link
+                  to={`/players/${user.username}`}
+                  className="pressable rounded-lg border border-pitch-700 px-2.5 py-1.5 text-[11px] text-ink-300"
+                >
+                  My stats
+                </Link>
+                <button
+                  onClick={() => void logout()}
+                  className="pressable rounded-lg border border-pitch-700 px-2.5 py-1.5 text-[11px] text-ink-300"
+                >
+                  Sign out
+                </button>
+              </div>
             )}
           </div>
           {user && (

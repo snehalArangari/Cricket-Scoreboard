@@ -8,6 +8,7 @@ import {
 } from '../models/User';
 import { clearSessionCookie, requireAuth, setSessionCookie, signToken } from '../auth';
 import { isDbConnected } from '../db';
+import { careerStats } from '../stats';
 
 export const authRouter = Router();
 
@@ -123,6 +124,25 @@ authRouter.get('/users/search', requireAuth, async (req, res) => {
     .limit(10)
     .lean();
   res.json({ users: docs.map(toPublicUser) });
+});
+
+/** A player's career record. Derived on read from every match they played in —
+ *  nothing is stored, so a corrected scorecard is reflected immediately. */
+authRouter.get('/users/:username/stats', requireAuth, async (req, res) => {
+  if (!dbReady(res)) return;
+  try {
+    const doc = await UserModel.findOne({
+      username: String(req.params.username).trim().toLowerCase(),
+    }).lean();
+    if (!doc) {
+      res.status(404).json({ error: 'NO_SUCH_USER', message: 'No player with that username' });
+      return;
+    }
+    res.json(await careerStats(toPublicUser(doc)));
+  } catch (err) {
+    console.error('[stats] career failed:', err);
+    res.status(500).json({ error: 'STATS_FAILED', message: 'Could not load stats' });
+  }
 });
 
 /** Exact-username lookup, for adding someone to a squad by handle. */

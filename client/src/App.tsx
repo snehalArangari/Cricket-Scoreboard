@@ -6,6 +6,7 @@ import Setup from './routes/Setup';
 import Scorer from './routes/Scorer';
 import Viewer from './routes/Viewer';
 import Login from './routes/Login';
+import Profile from './routes/Profile';
 
 /**
  * Keying on matchId forces a full remount when moving between matches — which a
@@ -61,6 +62,14 @@ function AppRoutes() {
         element={
           <RequireAuth>
             <PerMatch Component={Scorer} />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/players/:username"
+        element={
+          <RequireAuth>
+            <Profile />
           </RequireAuth>
         }
       />
