@@ -118,6 +118,7 @@ async function main() {
   console.log(`\nCo-scorer permissions against ${BASE}\n`);
 
   const account = await signedInUser('perm');
+  const guest = await signedInUser('opp'); // registered player for the other side
   OWNER = account.session;
   COOKIE = account.session.cookieHeader;
 
@@ -128,8 +129,8 @@ async function main() {
       overs: 20,
       teamAName: 'Owners',
       teamBName: 'Guests',
-      teamAPlayers: ['a', 'b', 'c'],
-      teamBPlayers: ['x', 'y', 'z'],
+      teamAPlayers: [{ name: 'a', username: account.username }, { name: 'b' }, { name: 'c' }],
+      teamBPlayers: [{ name: 'x', username: guest.username }, { name: 'y' }, { name: 'z' }],
     }),
   }).then((r) => r.json());
   const { matchId, scorerToken: ownerToken } = created;

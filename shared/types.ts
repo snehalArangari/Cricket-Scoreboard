@@ -7,8 +7,22 @@ export type InningsKey = 'innings1' | 'innings2';
 export type Winner = 'A' | 'B' | 'TIE';
 
 export interface Player {
+  /** Slot id within the match ('a1'..'aN', 'b1'..'bN'). The engine addresses
+   *  players by this and nothing else, so a squad can freely mix registered
+   *  accounts with one-off guests. */
   id: string;
   name: string;
+  /** Set when this slot is a registered account. The server resolves it from the
+   *  username at creation — a client cannot claim someone else's id. Career
+   *  stats accrue only to slots that carry one. */
+  userId?: string | null;
+  username?: string | null;
+}
+
+/** What the client sends for a squad slot. A bare string is a guest. */
+export interface SquadEntry {
+  name: string;
+  username?: string | null;
 }
 
 /**

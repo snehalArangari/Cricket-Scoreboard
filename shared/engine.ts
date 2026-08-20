@@ -16,6 +16,7 @@ import type {
   MatchState,
   Player,
   Setup,
+  SquadEntry,
   Team,
   TossDecision,
   Winner,
@@ -505,11 +506,28 @@ export function startSecondInnings(core: MatchCore): MatchCore {
 
 // ---- Setup validation ----
 
-export function makePlayers(names: string[], prefix: string): Player[] {
-  return names.map((name, i) => ({
-    id: `${prefix}${i + 1}`,
-    name: name.trim() || `Player ${i + 1}`,
-  }));
+/** A squad slot as supplied by a caller: a plain name, or a resolved account. */
+export type SquadInput = string | (SquadEntry & { userId?: string | null });
+
+function normalizeEntry(entry: SquadInput): SquadEntry & { userId?: string | null } {
+  return typeof entry === 'string' ? { name: entry } : entry;
+}
+
+export function makePlayers(entries: SquadInput[], prefix: string): Player[] {
+  return entries.map((raw, i) => {
+    const entry = normalizeEntry(raw);
+    return {
+      id: `${prefix}${i + 1}`,
+      name: (entry.name ?? '').trim() || `Player ${i + 1}`,
+      userId: entry.userId ?? null,
+      username: entry.username ?? null,
+    };
+  });
+}
+
+/** How many slots in a squad belong to a registered account. */
+export function registeredCount(team: Team): number {
+  return team.players.filter((p) => Boolean(p.userId)).length;
 }
 
 /**
@@ -524,21 +542,23 @@ export function validateSetup(input: {
   overs: number;
   teamAName: string;
   teamBName: string;
-  teamAPlayers: string[];
-  teamBPlayers: string[];
+  teamAPlayers: SquadInput[];
+  teamBPlayers: SquadInput[];
   /** Which of the two teams AS TYPED won the toss. */
   tossWinner?: 'A' | 'B' | null;
   tossDecision?: TossDecision | null;
 }): Setup {
   const overs = clamp(Math.round(input.overs), MIN_OVERS, MAX_OVERS);
-  const trim = (names: string[]) => {
-    const cleaned = names.map((n) => n.trim()).filter((n) => n.length > 0);
+  const trim = (entries: SquadInput[]) => {
+    const cleaned = entries
+      .map(normalizeEntry)
+      .filter((e) => (e.name ?? '').trim().length > 0);
     return cleaned.slice(0, MAX_PLAYERS);
   };
   const first = trim(input.teamAPlayers);
   const second = trim(input.teamBPlayers);
-  while (first.length < MIN_PLAYERS) first.push(`Player ${first.length + 1}`);
-  while (second.length < MIN_PLAYERS) second.push(`Player ${second.length + 1}`);
+  while (first.length < MIN_PLAYERS) first.push({ name: `Player ${first.length + 1}` });
+  while (second.length < MIN_PLAYERS) second.push({ name: `Player ${second.length + 1}` });
 
   const typedA = { name: input.teamAName.trim() || 'Team A', players: first };
   const typedB = { name: input.teamBName.trim() || 'Team B', players: second };

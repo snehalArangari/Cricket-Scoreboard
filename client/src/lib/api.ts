@@ -1,9 +1,16 @@
+/** A squad slot: a registered account carries a username, a guest just a name.
+ *  The server re-resolves every username itself, so this is a claim, not proof. */
+export interface SquadSlotInput {
+  name: string;
+  username?: string | null;
+}
+
 export interface CreateMatchInput {
   overs: number;
   teamAName: string;
   teamBName: string;
-  teamAPlayers: string[];
-  teamBPlayers: string[];
+  teamAPlayers: SquadSlotInput[];
+  teamBPlayers: SquadSlotInput[];
   /** Which team AS TYPED won the toss; the server orders the sides from this. */
   tossWinner?: 'A' | 'B' | null;
   tossDecision?: 'BAT' | 'BOWL' | null;

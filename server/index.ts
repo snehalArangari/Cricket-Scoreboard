@@ -22,6 +22,8 @@ import {
 import { createMatch, validateSetup } from '../shared/engine';
 import { attachUser, requireAuth } from './auth';
 import { authRouter } from './routes/authRoutes';
+import { UserModel } from './models/User';
+import { registeredCount } from '../shared/engine';
 
 // Node's built-in .env loader — no dotenv dependency. Absent file is fine.
 try {
@@ -80,20 +82,73 @@ function requireDb(res: express.Response): boolean {
 
 app.use('/api/auth', authRouter);
 
+/** Bulk-resolves claimed usernames to real accounts. Unknown handles are simply
+ *  dropped, so an unrecognised name becomes a guest rather than an error. */
+async function resolveSquads(
+  entries: unknown[],
+): Promise<Map<string, { id: string; username: string; displayName: string }>> {
+  const handles = new Set<string>();
+  for (const raw of entries) {
+    if (typeof raw === 'string' || !raw) continue;
+    const handle = String((raw as any).username ?? '').trim().toLowerCase();
+    if (handle) handles.add(handle);
+  }
+  const out = new Map<string, { id: string; username: string; displayName: string }>();
+  if (handles.size === 0) return out;
+  const docs = await UserModel.find({ username: { $in: [...handles] } }).lean();
+  for (const d of docs) {
+    out.set(String(d.username), {
+      id: String(d._id),
+      username: String(d.username),
+      displayName: String(d.displayName),
+    });
+  }
+  return out;
+}
+
 app.post('/api/matches', requireAuth, async (req, res) => {
   if (!requireDb(res)) return;
   try {
     const body = req.body ?? {};
+    const rawA = Array.isArray(body.teamAPlayers) ? body.teamAPlayers : [];
+    const rawB = Array.isArray(body.teamBPlayers) ? body.teamBPlayers : [];
+
+    // Resolve every claimed username against the database HERE. A client could
+    // otherwise post any userId it liked and quietly attach a stranger's account
+    // — and therefore their career stats — to a match they never played.
+    const resolved = await resolveSquads([...rawA, ...rawB]);
+    const attach = (entries: unknown[]) =>
+      entries.map((raw) => {
+        const entry = typeof raw === 'string' ? { name: raw } : (raw as any);
+        const handle = String(entry?.username ?? '').trim().toLowerCase();
+        const hit = handle ? resolved.get(handle) : undefined;
+        return {
+          name: String(entry?.name ?? hit?.displayName ?? ''),
+          username: hit ? hit.username : null,
+          userId: hit ? hit.id : null,
+        };
+      });
+
     const setup = validateSetup({
       overs: Number(body.overs),
       teamAName: String(body.teamAName ?? ''),
       teamBName: String(body.teamBName ?? ''),
-      teamAPlayers: Array.isArray(body.teamAPlayers) ? body.teamAPlayers.map(String) : [],
-      teamBPlayers: Array.isArray(body.teamBPlayers) ? body.teamBPlayers.map(String) : [],
+      teamAPlayers: attach(rawA),
+      teamBPlayers: attach(rawB),
       tossWinner: body.tossWinner === 'A' || body.tossWinner === 'B' ? body.tossWinner : null,
       tossDecision:
         body.tossDecision === 'BAT' || body.tossDecision === 'BOWL' ? body.tossDecision : null,
     });
+
+    // At least one registered player per side, so every match is anchored to
+    // real accounts and its stats have somewhere to land.
+    if (registeredCount(setup.teamA) < 1 || registeredCount(setup.teamB) < 1) {
+      res.status(400).json({
+        error: 'NEED_REGISTERED_PLAYER',
+        message: 'Each team needs at least one registered player — add someone by username',
+      });
+      return;
+    }
 
     // Retry on the astronomically unlikely id collision rather than 500.
     let matchId = shortId();

@@ -134,6 +134,9 @@ async function main() {
 
   // --- create a match over REST (authenticated) ---
   const account = await signedInUser('core');
+  // Every side needs one registered player; the rest are guests. Slot ids are
+  // unaffected, so the assertions below still address a1..a4 and b1..b4.
+  const away = await signedInUser('away');
   COOKIE = account.session.cookieHeader;
   const res = await account.session.fetch('/api/matches', {
     method: 'POST',
@@ -141,8 +144,18 @@ async function main() {
       overs: 2,
       teamAName: 'Mumbai',
       teamBName: 'Chennai',
-      teamAPlayers: ['Rohit', 'Ishan', 'Suryakumar', 'Tilak'],
-      teamBPlayers: ['Ruturaj', 'Conway', 'Jadeja', 'Dhoni'],
+      teamAPlayers: [
+        { name: 'Rohit', username: account.username },
+        { name: 'Ishan' },
+        { name: 'Suryakumar' },
+        { name: 'Tilak' },
+      ],
+      teamBPlayers: [
+        { name: 'Ruturaj', username: away.username },
+        { name: 'Conway' },
+        { name: 'Jadeja' },
+        { name: 'Dhoni' },
+      ],
     }),
   });
   check('REST create returns 201', res.status, 201);

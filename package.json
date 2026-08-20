@@ -16,7 +16,8 @@
     "test": "tsx shared/engine.test.ts",
     "test:e2e": "tsx scripts/e2e.ts",
     "test:scorers": "tsx scripts/e2e-scorers.ts",
-    "test:auth": "tsx scripts/e2e-auth.ts"
+    "test:auth": "tsx scripts/e2e-auth.ts",
+    "test:squads": "tsx scripts/e2e-squads.ts"
   },
   "dependencies": {
     "cookie-parser": "^1.4.7",

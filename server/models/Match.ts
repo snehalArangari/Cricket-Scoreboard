@@ -9,6 +9,10 @@ const PlayerSchema = new Schema(
   {
     id: { type: String, required: true },
     name: { type: String, required: true },
+    // Null for a guest. Indexed so a profile can find every match a player
+    // appeared in without scanning the collection.
+    userId: { type: Schema.Types.ObjectId, ref: 'User', default: null, index: true },
+    username: { type: String, default: null },
   },
   subOpts,
 );

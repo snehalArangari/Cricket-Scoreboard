@@ -210,8 +210,10 @@ export default function Scorer() {
         overs,
         teamAName: first.name,
         teamBName: second.name,
-        teamAPlayers: first.players.map((p) => p.name),
-        teamBPlayers: second.players.map((p) => p.name),
+        // Carry the account links across, or a rematch would quietly demote
+        // every registered player to a guest and lose their stats.
+        teamAPlayers: first.players.map((p) => ({ name: p.name, username: p.username ?? null })),
+        teamBPlayers: second.players.map((p) => ({ name: p.name, username: p.username ?? null })),
       });
       saveScorerToken(created.matchId, created.scorerToken);
       navigate(`/score/${created.matchId}`, { replace: false });

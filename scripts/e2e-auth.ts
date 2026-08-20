@@ -143,14 +143,16 @@ async function main() {
   );
 
   // ---- a signed-in user can create a match ----
+  // Each side needs a registered player, so a second account plays for Beta.
+  const beta = await signedInUser('beta');
   const created = await alice.session.fetch('/api/matches', {
     method: 'POST',
     body: JSON.stringify({
       overs: 5,
       teamAName: 'Alpha',
       teamBName: 'Beta',
-      teamAPlayers: ['x', 'y'],
-      teamBPlayers: ['p', 'q'],
+      teamAPlayers: [{ name: 'Alice', username: alice.username }, { name: 'Guest A' }],
+      teamBPlayers: [{ name: 'Beta Cap', username: beta.username }, { name: 'Guest B' }],
       tossWinner: 'A',
       tossDecision: 'BAT',
     }),
