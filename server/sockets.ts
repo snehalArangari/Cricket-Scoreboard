@@ -1,6 +1,7 @@
 import type { Server, Socket } from 'socket.io';
 import crypto from 'node:crypto';
 import { MatchModel, applyCore, toCore, type MatchDoc } from './models/Match';
+import { tokenFromCookieHeader, verifyToken } from './auth';
 import {
   applyBall,
   deleteBallAt,
@@ -287,6 +288,11 @@ export function registerSocketHandlers(io: Server): void {
       const matchId = typeof auth.matchId === 'string' ? auth.matchId.trim() : '';
       if (!matchId) return next(new Error('NO_MATCH_ID'));
 
+      // Watching requires an account too, so the session cookie sent with the
+      // handshake must be valid before anything else is considered.
+      const session = verifyToken(tokenFromCookieHeader(socket.handshake.headers.cookie) ?? '');
+      if (!session) return next(new Error('UNAUTHENTICATED'));
+
       const doc = await MatchModel.findOne({ matchId }).lean();
       if (!doc) return next(new Error('MATCH_NOT_FOUND'));
 
@@ -294,6 +300,8 @@ export function registerSocketHandlers(io: Server): void {
       socket.data.matchId = matchId;
       socket.data.role = role;
       socket.data.coScorerId = coScorerId;
+      socket.data.userId = session.sub;
+      socket.data.username = session.username;
       next();
     } catch (err) {
       next(new Error('AUTH_FAILED'));

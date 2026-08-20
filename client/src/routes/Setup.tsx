@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createMatchRequest, saveScorerToken } from '../lib/api';
+import { useAuth } from '../hooks/useAuth';
 import { Btn, Field, Panel, Screen, TextArea, TextInput } from '../components/ui';
 
 function defaultSquad(count: number): string {
@@ -9,6 +10,7 @@ function defaultSquad(count: number): string {
 
 export default function Setup() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [teamAName, setTeamAName] = useState('Team A');
   const [teamBName, setTeamBName] = useState('Team B');
   const [overs, setOvers] = useState('10');
@@ -65,9 +67,24 @@ export default function Setup() {
     <Screen>
       <div className="mx-auto w-full max-w-md px-4 py-6">
         <header className="mb-6">
-          <h1 className="font-display text-3xl font-extrabold tracking-tight text-ink-50">
-            CRICKET <span className="text-accent">LIVE</span>
-          </h1>
+          <div className="mb-3 flex items-center justify-between">
+            <h1 className="font-display text-3xl font-extrabold tracking-tight text-ink-50">
+              CRICKET <span className="text-accent">LIVE</span>
+            </h1>
+            {user && (
+              <button
+                onClick={() => void logout()}
+                className="pressable rounded-lg border border-pitch-700 px-2.5 py-1.5 text-[11px] text-ink-300"
+              >
+                Sign out
+              </button>
+            )}
+          </div>
+          {user && (
+            <p className="text-xs text-ink-500">
+              Signed in as <span className="text-accent">@{user.username}</span>
+            </p>
+          )}
           <p className="mt-1 text-sm text-ink-300">
             Score from your phone. Share one link and anyone can watch it live.
           </p>

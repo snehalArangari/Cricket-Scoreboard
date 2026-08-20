@@ -1,4 +1,5 @@
 import express from 'express';
+import cookieParser from 'cookie-parser';
 import http from 'node:http';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -19,6 +20,8 @@ import {
   viewerView,
 } from './sockets';
 import { createMatch, validateSetup } from '../shared/engine';
+import { attachUser, requireAuth } from './auth';
+import { authRouter } from './routes/authRoutes';
 
 // Node's built-in .env loader — no dotenv dependency. Absent file is fine.
 try {
@@ -47,6 +50,10 @@ function shortId(length = 6): string {
 const app = express();
 app.disable('x-powered-by');
 app.use(express.json({ limit: '256kb' }));
+app.use(cookieParser());
+// Attaches req.user when a session cookie is present. Never rejects on its own —
+// routes opt into requireAuth so /api/health stays reachable for monitoring.
+app.use(attachUser);
 
 // ---- API (registered BEFORE the static handler and the SPA fallback) ----
 
@@ -71,7 +78,9 @@ function requireDb(res: express.Response): boolean {
   return false;
 }
 
-app.post('/api/matches', async (req, res) => {
+app.use('/api/auth', authRouter);
+
+app.post('/api/matches', requireAuth, async (req, res) => {
   if (!requireDb(res)) return;
   try {
     const body = req.body ?? {};
@@ -99,6 +108,7 @@ app.post('/api/matches', async (req, res) => {
     await MatchModel.create({
       ...core,
       scorerTokenHash: hashToken(scorerToken),
+      ownerUserId: req.user!.id,
     });
 
     // The token is returned exactly once, here, and never leaves the server again.
@@ -109,7 +119,7 @@ app.post('/api/matches', async (req, res) => {
   }
 });
 
-app.get('/api/matches/:matchId', async (req, res) => {
+app.get('/api/matches/:matchId', requireAuth, async (req, res) => {
   if (!requireDb(res)) return;
   try {
     const doc = (await MatchModel.findOne({ matchId: req.params.matchId })) as MatchDoc | null;

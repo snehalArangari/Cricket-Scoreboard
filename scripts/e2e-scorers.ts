@@ -5,8 +5,13 @@
 
 import { io, type Socket } from 'socket.io-client';
 import type { MatchState } from '../shared/types';
+import { Session, signedInUser } from './testkit';
 
 const BASE = process.env.E2E_BASE ?? 'http://127.0.0.1:3000';
+
+// The owner's session cookie; every handshake in this suite carries it.
+let COOKIE = '';
+let OWNER: Session | null = null;
 
 let passed = 0;
 const failures: string[] = [];
@@ -37,6 +42,7 @@ function connect(matchId: string, scorerToken?: string): Promise<Client> {
       auth: { matchId, scorerToken },
       transports: ['websocket'],
       reconnection: false,
+      extraHeaders: { Cookie: COOKIE },
     });
     const states: MatchState[] = [];
     let role: string | null = null;
@@ -100,17 +106,20 @@ const ball = (over: Record<string, unknown> = {}) => ({
 });
 
 const api = (path: string, token?: string, init: RequestInit = {}) =>
-  fetch(`${BASE}${path}`, {
+  OWNER!.fetch(path, {
     ...init,
     headers: {
-      'Content-Type': 'application/json',
       ...(token ? { 'x-scorer-token': token } : {}),
-      ...(init.headers ?? {}),
+      ...((init.headers as Record<string, string>) ?? {}),
     },
   });
 
 async function main() {
   console.log(`\nCo-scorer permissions against ${BASE}\n`);
+
+  const account = await signedInUser('perm');
+  OWNER = account.session;
+  COOKIE = account.session.cookieHeader;
 
   const created = await api('/api/matches', undefined, {
     method: 'POST',

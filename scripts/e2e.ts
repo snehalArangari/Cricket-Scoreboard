@@ -7,8 +7,12 @@
 
 import { io, type Socket } from 'socket.io-client';
 import type { MatchState } from '../shared/types';
+import { signedInUser } from './testkit';
 
 const BASE = process.env.E2E_BASE ?? 'http://127.0.0.1:3000';
+
+// Set once the throwaway account is created; every socket handshake carries it.
+let COOKIE = '';
 
 let passed = 0;
 const failures: string[] = [];
@@ -44,6 +48,7 @@ function connect(matchId: string, scorerToken?: string): Promise<Client> {
       auth: { matchId, scorerToken },
       transports: ['websocket'],
       reconnection: false,
+      extraHeaders: { Cookie: COOKIE },
     });
     const states: MatchState[] = [];
     let role: string | null = null;
@@ -127,10 +132,11 @@ function ball(over: Record<string, unknown> = {}) {
 async function main() {
   console.log(`\nEnd-to-end against ${BASE}\n`);
 
-  // --- create a match over REST ---
-  const res = await fetch(`${BASE}/api/matches`, {
+  // --- create a match over REST (authenticated) ---
+  const account = await signedInUser('core');
+  COOKIE = account.session.cookieHeader;
+  const res = await account.session.fetch('/api/matches', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       overs: 2,
       teamAName: 'Mumbai',

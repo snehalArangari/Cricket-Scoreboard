@@ -73,6 +73,10 @@ const MatchSchema = new Schema(
     matchId: { type: String, required: true, unique: true, index: true },
     /** The creator's token. Grants scoring AND the right to invite. */
     scorerTokenHash: { type: String, required: true },
+    /** The signed-in account that created this match. Anchors "my matches"
+     *  and, later, tournament ownership. Scoring rights still come from the
+     *  token, so a shared device keeps working. */
+    ownerUserId: { type: Schema.Types.ObjectId, ref: 'User', default: null, index: true },
     coScorers: { type: [CoScorerSchema], default: [] },
     setup: {
       overs: { type: Number, required: true },
