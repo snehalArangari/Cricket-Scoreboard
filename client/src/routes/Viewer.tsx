@@ -5,6 +5,7 @@ import { useMatch } from '../hooks/useMatch';
 import { Panel, Screen, StatusBar } from '../components/ui';
 import { ScoreHero, ThisOver, activeInnings } from '../components/Scoreboard';
 import { BattingTable, BowlingTable } from '../components/Cards';
+import Awards from '../components/Awards';
 
 /**
  * Read-only by construction: it connects with no scorer token, so the server
@@ -93,6 +94,12 @@ export default function Viewer() {
                 </span>
               )}
             </div>
+          </div>
+        )}
+
+        {state.status === 'complete' && (
+          <div className="px-4 pt-4">
+            <Awards state={state} />
           </div>
         )}
 

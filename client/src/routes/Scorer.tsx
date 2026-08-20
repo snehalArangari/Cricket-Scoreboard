@@ -11,6 +11,7 @@ import {
 } from '../lib/api';
 import ResultPanel from '../components/ResultPanel';
 import ScorerManager from '../components/ScorerManager';
+import Awards from '../components/Awards';
 import { Btn, Panel, Screen, StatusBar, Toast } from '../components/ui';
 import { ScoreHero, ThisOver, activeInnings } from '../components/Scoreboard';
 import { Scorecards } from '../components/Cards';
@@ -324,6 +325,12 @@ export default function Scorer() {
             onRematch={rematch}
             onNewMatch={() => navigate('/')}
           />
+        )}
+
+        {state.status === 'complete' && (
+          <div className="mt-3 px-4">
+            <Awards state={state} />
+          </div>
         )}
 
         {/* ---- On field ---- */}
